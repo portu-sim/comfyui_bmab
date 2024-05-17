@@ -1,0 +1,9 @@
+lightning
+segment_anything
+omegaconf
+ultralytics
+scikit-image
+huggingface_hub
+transformers>=4.39.1
+
+
