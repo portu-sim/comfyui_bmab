@@ -22,6 +22,26 @@ class BMABDetailer:
 		model_lora, clip_lora = comfy.sd.load_lora_for_models(model, clip, lora, strength_model, strength_clip)
 		return (model_lora, clip_lora)
 
+	@staticmethod
+	def apply_color_correction(correction, original_image):
+		import cv2
+		import numpy as np
+		from skimage import exposure
+		from blendmodes.blend import blendLayers, BlendType
+
+		image = Image.fromarray(cv2.cvtColor(exposure.match_histograms(
+			cv2.cvtColor(
+				np.asarray(original_image),
+				cv2.COLOR_RGB2LAB
+			),
+			cv2.cvtColor(np.asarray(correction.copy()), cv2.COLOR_RGB2LAB),
+			channel_axis=2
+		), cv2.COLOR_LAB2RGB).astype("uint8"))
+
+		image = blendLayers(image, original_image, BlendType.LUMINOSITY)
+
+		return image.convert('RGB')
+
 
 class BMABFaceDetailer(BMABDetailer):
 	@classmethod
@@ -66,15 +86,15 @@ class BMABFaceDetailer(BMABDetailer):
 			for l in lora.loras:
 				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
-		dilation = 4
 		boxes, confs = utils.yolo.predict(bgimg, 'face_yolov8n.pt', 0.35)
 		for box, conf in zip(boxes, confs):
 			x1, y1, x2, y2 = tuple(int(x) for x in box)
 			x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
-			cbx = x1 - padding, y1 - padding, x2 + padding, y2 + padding
+			cbx = utils.get_box_with_padding(bgimg, (x1, y1, x2, y2), padding)
 			cropped = bgimg.crop(cbx)
 			resized = utils.resize_and_fill(cropped, width, height)
 			face = self.detailer(resized, bind, steps, cfg, sampler_name, scheduler, denoise)
+			face = self.apply_color_correction(resized, face)
 
 			iratio = width / height
 			cratio = cropped.width / cropped.height

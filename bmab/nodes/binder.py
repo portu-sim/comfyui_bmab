@@ -10,6 +10,14 @@ class BMABBind:
 	def copy(self):
 		return copy.copy(self)
 
+	@staticmethod
+	def result(bind, pixels, *args):
+		if bind is None:
+			return (None, pixels, *args)
+		else:
+			bind.pixels = pixels
+			return (bind, bind.pixels, *args)
+
 
 class BMABLoraBind:
 	def __init__(self, *args) -> None:

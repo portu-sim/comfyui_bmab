@@ -1,9 +1,11 @@
 import os
 import gc
+import sys
 import cv2
 import torch
 import numpy as np
 import glob
+import importlib.util
 from color_matcher import ColorMatcher
 from basicsr.utils.download_util import load_file_from_url
 
@@ -232,6 +234,11 @@ def fix_box_limit(box, size):
     return x1, y1, x2, y2
 
 
+def get_box_with_padding(mask, box, pad=0):
+    x1, y1, x2, y2 = box
+    return (max(x1 - pad, 0), max(y1 - pad, 0), min(x2 + pad, mask.size[0]), min(y2 + pad, mask.size[1])) if pad else box
+
+
 def resize_and_fill(im, width, height):
     ratio = width / height
     src_ratio = im.width / im.height
@@ -290,3 +297,21 @@ def parse_prompt(prompt: str, seed):
 def get_cache_path(filename):
     return os.path.join(resource_path, f'cache/{filename}')
 
+
+def load_external_module(module_path, module_name):
+    path = os.path.dirname(__file__)
+    custom_nodes_path = os.path.join(path, '../../../')
+    target = os.path.join(custom_nodes_path, module_path)
+    target_path = os.path.normpath(target)
+    print('target_path', target_path)
+    if not os.path.exists(target_path):
+        return None
+    return load_module(target_path, module_name)
+
+
+def load_module(file_name, module_name):
+    spec = importlib.util.spec_from_file_location(module_name, file_name)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module

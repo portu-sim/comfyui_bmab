@@ -42,8 +42,8 @@ class BMABUpscale:
 		bgimg = utils.tensor2pil(pixels)
 		method = pil_upscale_methods.get(upscale_method)
 		bgimg = bgimg.resize((width, height), method)
-		bind.pixels = utils.pil2tensor(bgimg.convert('RGB'))
-		return (bind, bind.pixels,)
+		pixels = utils.pil2tensor(bgimg.convert('RGB'))
+		return BMABBind.result(bind, pixels, )
 
 
 class BMABResizeAndFill:
@@ -156,6 +156,6 @@ class BMABUpscaleWithModel:
 
 		bgimg = utils.tensor2pil(s)
 		bgimg = bgimg.resize((width, height), Image.Resampling.LANCZOS)
-		bind.pixels = utils.pil2tensor(bgimg.convert('RGB'))
+		pixels = utils.pil2tensor(bgimg.convert('RGB'))
 
-		return (bind, bind.pixels,)
+		return BMABBind.result(bind, pixels,)

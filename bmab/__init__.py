@@ -15,13 +15,16 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Simple Hand Detailer': nodes.BMABSimpleHandDetailer,
     'BMAB Subframe Hand Detailer': nodes.BMABSubframeHandDetailer,
     'BMAB Resize By Person': nodes.BMABResizeByPerson,
-    'BMAB Control Net': nodes.BMABControlNet,
     'BMAB Save Image': nodes.BMABSaveImage,
     'BMAB Upscale With Model': nodes.BMABUpscaleWithModel,
     'BMAB LoRA Loader': nodes.BMABLoraLoader,
     'BMAB Prompt': nodes.BMABPrompt,
     'BMAB Resize and Fill': nodes.BMABResizeAndFill,
     'BMAB Google Gemini Prompt': nodes.BMABGoogleGemini,
+
+    # Control Net
+    'BMAB ControlNet': nodes.BMABControlNet,
+    'BMAB ControlNet Openpose': nodes.BMABControlNetOpenpose,
 
     # Imaging
     'BMAB Detection Crop': nodes.BMABDetectionCrop,
@@ -61,6 +64,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Prompt': 'BMAB Prompt',
     'BMAB Resize and Fill': 'BMAB Resize And Fill',
     'BMAB Google Gemini Prompt': 'BMAB Google Gemini API',
+
+    # Control Net
+    'BMAB ControlNet': 'BMAB ControlNet',
+    'BMAB ControlNet Openpose': 'BMAB ControlNet Openpose',
 
     # Imaging
     'BMAB Detection Crop': 'BMAB Detection Crop',

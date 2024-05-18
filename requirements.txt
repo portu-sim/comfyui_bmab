@@ -5,5 +5,7 @@ ultralytics
 scikit-image
 huggingface_hub
 transformers>=4.39.1
+basicsr>=1.4.2
+blendmodes
 
 
