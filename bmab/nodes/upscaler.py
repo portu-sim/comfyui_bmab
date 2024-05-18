@@ -20,8 +20,10 @@ class BMABUpscale:
 		return {
 			'required': {
 				'image': ('IMAGE',),
-				'width': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
-				'height': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
+				'upscale_method': (BMABUpscale.upscale_methods, ),
+				'scale': ('FLOAT', {'default': 2.0, 'min': 0, 'max': 4.0, 'step': 0.001}),
+				'width': ('INT', {'default': 512, 'min': 32, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
+				'height': ('INT', {'default': 512, 'min': 32, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 			}
 		}
 
@@ -31,7 +33,7 @@ class BMABUpscale:
 
 	CATEGORY = 'BMAB/upscale'
 
-	def upscale(self, upscale_method, width, height, bind: BMABBind=None, image=None):
+	def upscale(self, upscale_method, scale, width, height, bind: BMABBind=None, image=None):
 		pixels = bind.pixels if image is None else image
 		pil_upscale_methods = {
 			'LANCZOS': Image.Resampling.LANCZOS,
@@ -39,6 +41,8 @@ class BMABUpscale:
 			'BICUBIC': Image.Resampling.BICUBIC,
 			'NEAREST': Image.Resampling.NEAREST,
 		}
+		if scale != 0:
+			width, height = int(width * scale), int(height * scale)
 		bgimg = utils.tensor2pil(pixels)
 		method = pil_upscale_methods.get(upscale_method)
 		bgimg = bgimg.resize((width, height), method)
@@ -51,6 +55,7 @@ class BMABResizeAndFill:
 	def INPUT_TYPES(s):
 		return {
 			'required': {
+				'scale': ('FLOAT', {'default': 2.0, 'min': 0, 'max': 4.0, 'step': 0.001}),
 				'width': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 				'height': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 			},
@@ -65,13 +70,16 @@ class BMABResizeAndFill:
 
 	CATEGORY = 'BMAB/upscale'
 
-	def upscale(self, image, width, height):
+	def upscale(self, image, scale, width, height):
 		bgimg = utils.tensor2pil(image)
 
 		resized = Image.new('RGB', (width, height), 0)
 
 		mask = Image.new('L', (width, height), 0)
 		dr = ImageDraw.Draw(mask, 'L')
+
+		if scale != 0:
+			width, height = int(width * scale), int(height * scale)
 
 		iratio = width / height
 		cratio = bgimg.width / bgimg.height
