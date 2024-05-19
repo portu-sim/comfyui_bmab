@@ -19,12 +19,15 @@ class BMABUpscale:
 	def INPUT_TYPES(s):
 		return {
 			'required': {
-				'image': ('IMAGE',),
 				'upscale_method': (BMABUpscale.upscale_methods, ),
 				'scale': ('FLOAT', {'default': 2.0, 'min': 0, 'max': 4.0, 'step': 0.001}),
 				'width': ('INT', {'default': 512, 'min': 32, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 				'height': ('INT', {'default': 512, 'min': 32, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
-			}
+			},
+			'optional': {
+				'bind': ('BMAB bind',),
+				'image': ('IMAGE',),
+			},
 		}
 
 	RETURN_TYPES = ('BMAB bind', 'IMAGE',)
@@ -41,9 +44,9 @@ class BMABUpscale:
 			'BICUBIC': Image.Resampling.BICUBIC,
 			'NEAREST': Image.Resampling.NEAREST,
 		}
-		if scale != 0:
-			width, height = int(width * scale), int(height * scale)
 		bgimg = utils.tensor2pil(pixels)
+		if scale != 0:
+			width, height = int(bgimg.width * scale), int(bgimg.height * scale)
 		method = pil_upscale_methods.get(upscale_method)
 		bgimg = bgimg.resize((width, height), method)
 		pixels = utils.pil2tensor(bgimg.convert('RGB'))
