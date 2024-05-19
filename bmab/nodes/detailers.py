@@ -601,9 +601,10 @@ class BMABDetailAnything(BMABDetailer):
 				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
 				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 0.4, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
-				'upscale_ratio': ('FLOAT', {'default': 4.0, 'min': 1.0, 'max': 8.0, 'step': 0.01}),
-				'dilation': ('INT', {'default': 3, 'min': 3, 'max': 20, 'step': 1}),
-				'large_person_area_limit': ('FLOAT', {'default': 0.1, 'min': 0.01, 'max': 1.0, 'step': 0.01}),
+				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
+				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
+				'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+				'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 				'limit': ('INT', {'default': 1, 'min': 0, 'max': 20, 'step': 1}),
 			},
 			'optional': {
@@ -626,7 +627,7 @@ class BMABDetailAnything(BMABDetailer):
 		result = utils.tensor2pil(latent)
 		return result
 
-	def process(self, bind: BMABBind, masks, steps, cfg, sampler_name, scheduler, denoise, upscale_ratio, dilation, large_person_area_limit, limit, image=None, lora=None):
+	def process(self, bind: BMABBind, masks, steps, cfg, sampler_name, scheduler, denoise, padding, dilation, width, height, limit, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
 		image = utils.tensor2pil(pixels)
 
@@ -651,47 +652,33 @@ class BMABDetailAnything(BMABDetailer):
 			if limit != 0 and idx >= limit:
 				break
 
-			cropped = image.crop(box=(x1, y1, x2, y2))
+			cbx = utils.get_box_with_padding(image, (x1, y1, x2, y2), padding)
+			cropped = image.crop(cbx)
+			resized = utils.resize_and_fill(cropped, width, height)
+			processed = self.process_img2img(resized, bind, steps, cfg, sampler_name, scheduler, denoise)
+			processed = self.apply_color_correction(resized, processed)
 
-			area_person = cropped.width * cropped.height
-			area_image = image.width * image.height
-			ratio = area_person / area_image
-			print('AREA', area_image, (cropped.width * cropped.height), ratio)
-			if ratio > 1 and ratio >= large_person_area_limit:
-				print(f'Person is too big to process. {ratio} >= {large_person_area_limit}.')
-				continue
+			iratio = width / height
+			cratio = cropped.width / cropped.height
+			if iratio < cratio:
+				ratio = cropped.width / width
+				processed = processed.resize((int(processed.width * ratio), int(processed.height * ratio)))
+				y0 = (processed.height - cropped.height) // 2
+				processed = processed.crop((0, y0, cropped.width, y0 + cropped.height))
+			else:
+				ratio = cropped.height / height
+				processed = processed.resize((int(processed.width * ratio), int(processed.height * ratio)))
+				x0 = (processed.width - cropped.width) // 2
+				processed = processed.crop((x0, 0, x0 + cropped.width, cropped.height))
 
-			block_overscaled_image = True
-			auto_upscale = True
-
-			scale = upscale_ratio
-			w, h = utils.fix_size_by_scale(cropped.width, cropped.height, scale)
-			print(f'Trying x{scale} ({cropped.width},{cropped.height}) -> ({w},{h})')
-			if scale > 1 and block_overscaled_image:
-				area_scaled = w * h
-				if area_scaled > area_image:
-					print(f'It is too large to process.')
-					if not auto_upscale:
-						continue
-					print('AREA', area_image, (cropped.width * cropped.height))
-					scale = math.sqrt(area_image / (cropped.width * cropped.height))
-					w, h = utils.fix_size_by_scale(cropped.width, cropped.height, scale)
-					print(f'Auto Scale x{scale} ({cropped.width},{cropped.height}) -> ({w},{h})')
-					if scale < 1.2:
-						print(f'Scale {scale} has no effect. skip!!!!!')
-						continue
-
-			print(f'Scale {scale}')
-			enlarged = cropped.resize((w, h), Image.Resampling.LANCZOS)
-			processed = self.process_img2img(enlarged, bind, steps, cfg, sampler_name, scheduler, denoise)
-			processed = processed.resize(cropped.size, Image.Resampling.LANCZOS)
+			img = image.copy()
+			img.paste(processed, (cbx[0], cbx[1]))
 
 			pil_mask = pil_mask.filter(ImageFilter.MaxFilter(dilation))
-			cropped_mask = pil_mask.crop((x1, y1, x2, y2))
 			blur = ImageFilter.GaussianBlur(dilation)
-			blur_mask = cropped_mask.filter(blur)
+			blur_mask = pil_mask.filter(blur)
 
-			image.paste(processed, (x1, y1), mask=blur_mask)
+			image.paste(img, (0, 0), mask=blur_mask)
 
 		bind.pixels = utils.pil2tensor(image.convert('RGB'))
 		return (bind, bind.pixels)
