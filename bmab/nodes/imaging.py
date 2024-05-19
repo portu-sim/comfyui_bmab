@@ -67,8 +67,8 @@ class BMABRemoveBackground:
 			}
 		}
 
-	RETURN_TYPES = ('IMAGE', )
-	RETURN_NAMES = ('image', )
+	RETURN_TYPES = ('IMAGE', 'MASK', )
+	RETURN_NAMES = ('image', 'MASK', )
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/imaging'
@@ -77,7 +77,7 @@ class BMABRemoveBackground:
 		image = utils.tensor2pil(image)
 
 		net = BriaRMBG()
-		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+		device = utils.get_device()
 		net = BriaRMBG.from_pretrained('briaai/RMBG-1.4')
 		net.to(device)
 		net.eval()
@@ -96,8 +96,6 @@ class BMABRemoveBackground:
 		# save result
 		pil_im = Image.fromarray(result_image)
 
-		pil_im.save('test.png')
-
 		del net
 		del img
 		utils.torch_gc()
@@ -106,7 +104,8 @@ class BMABRemoveBackground:
 		blank.paste(image.convert('RGBA'), (0, 0), mask=pil_im)
 
 		pixels = utils.pil2tensor(blank)
-		return (pixels, )
+		mask = utils.pil2tensor_mask(result_image)
+		return (pixels, mask, )
 
 
 class BMABAlphaComposit:

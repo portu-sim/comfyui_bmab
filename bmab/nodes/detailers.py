@@ -2,6 +2,7 @@ import comfy
 import nodes
 import math
 import numpy as np
+from collections.abc import Iterable
 
 from PIL import Image
 from PIL import ImageDraw
@@ -637,6 +638,9 @@ class BMABDetailAnything(BMABDetailer):
 		if len(boxes) == 0:
 			bind.pixels = pixels
 			return (bind, bind.pixels, )
+
+		if len(masks.shape) == 2:
+			masks = [masks]
 
 		for (idx, m) in enumerate(masks):
 			i = 255. * m.cpu().numpy().squeeze()
