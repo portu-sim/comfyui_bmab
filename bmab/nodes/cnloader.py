@@ -19,7 +19,7 @@ class BMABControlNet:
 	def INPUT_TYPES(s):
 		input_dir = folder_paths.get_input_directory()
 		files = ['None']
-		files.extend(sorted([f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]))
+		files.extend(utils.get_file_list(input_dir, input_dir))
 
 		return {
 			'required': {
@@ -145,7 +145,7 @@ class BMABControlNetOpenpose(BMABControlNet):
 	def INPUT_TYPES(s):
 		cnnames = [cn for cn in folder_paths.get_filename_list('controlnet') if cn.find('openpose') >= 0]
 		input_dir = folder_paths.get_input_directory()
-		files = sorted([f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))])
+		files = utils.get_file_list(input_dir, input_dir)
 
 		try:
 			from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
@@ -210,7 +210,7 @@ class BMABControlNetIPAdapter(BMABControlNet):
 	@classmethod
 	def INPUT_TYPES(s):
 		input_dir = folder_paths.get_input_directory()
-		files = sorted([f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))])
+		files = utils.get_file_list(input_dir, input_dir)
 
 		try:
 			from ComfyUI_IPAdapter_plus import IPAdapterPlus

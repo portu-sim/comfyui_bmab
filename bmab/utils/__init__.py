@@ -326,3 +326,13 @@ def get_blur_mask(size, box, dilation):
     blur = ImageFilter.GaussianBlur(dilation)
     return mask.filter(blur)
 
+
+def get_file_list(base, dd):
+    files = []
+    for f in glob.glob(f'{dd}/*'):
+        if os.path.isdir(f):
+            files.extend(get_file_list(base, f))
+        else:
+            files.append(os.path.relpath(f, base).replace('\\', '/'))
+    return files
+
