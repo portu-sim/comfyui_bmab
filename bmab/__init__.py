@@ -2,11 +2,11 @@ from bmab import nodes
 
 
 NODE_CLASS_MAPPINGS = {
-    'Basic': nodes.BMABBasic,
-    'Edge': nodes.BMABEdge,
-    'Integrator': nodes.BMABIntegrator,
-    'Extractor': nodes.BMABExtractor,
-    'SeedGenerator': nodes.BMABSeedGenerator,
+    'BMAB Basic': nodes.BMABBasic,
+    'BMAB Edge': nodes.BMABEdge,
+    'BMAB Integrator': nodes.BMABIntegrator,
+    'BMAB Extractor': nodes.BMABExtractor,
+    'BMAB SeedGenerator': nodes.BMABSeedGenerator,
     'BMAB KSampler': nodes.BMABKSampler,
     'BMAB KSamplerHiresFix': nodes.BMABKSamplerHiresFix,
     'BMAB Upscaler': nodes.BMABUpscale,
@@ -51,10 +51,10 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'Basic': 'BMAB Basic',
-    'Edge': 'BMAB Edge',
-    'DinoSam': 'BMAB DinoSam',
-    'Integrator': 'BMAB Integrator',
+    'BMAB Basic': 'BMAB Basic',
+    'BMAB Edge': 'BMAB Edge',
+    'BMAB DinoSam': 'BMAB DinoSam',
+    'BMAB Integrator': 'BMAB Integrator',
     'BMAB KSampler': 'BMAB KSampler',
     'BMAB KSamplerHiresFix': 'BMAB KSampler Hires. Fix',
     'BMAB Upscaler': 'BMAB Upscaler',
