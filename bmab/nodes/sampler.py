@@ -25,7 +25,7 @@ class BMABIntegrator:
 			'optional': {
 				'seed_in': ('SEED',),
 				'latent': ('LATENT',),
-				'pixels': ('IMAGE',),
+				'image': ('IMAGE',),
 			}
 		}
 
@@ -35,7 +35,7 @@ class BMABIntegrator:
 
 	CATEGORY = 'BMAB/sampler'
 
-	def integrate_inputs(self, model, clip, vae, seed, stop_at_clip_layer, token_normalization, weight_interpretation, prompt, negative_prompt, seed_in=None, latent=None, pixels=None, ):
+	def integrate_inputs(self, model, clip, vae, seed, stop_at_clip_layer, token_normalization, weight_interpretation, prompt, negative_prompt, seed_in=None, latent=None, image=None, ):
 
 		if seed_in is not None:
 			seed = seed_in
@@ -57,7 +57,7 @@ class BMABIntegrator:
 
 		clip.clip_layer(stop_at_clip_layer)
 
-		return BMABBind(model, clip, vae, prompt, negative_prompt, positive, negative, latent, seed, pixels), seed
+		return BMABBind(model, clip, vae, prompt, negative_prompt, positive, negative, latent, seed, image), seed
 
 
 class BMABExtractor:
@@ -70,15 +70,16 @@ class BMABExtractor:
 		}
 
 	RETURN_TYPES = ('MODEL', 'CONDITIONING', 'CONDITIONING', 'VAE', 'LATENT', 'IMAGE', 'SEED')
+	RETURN_NAMES = ('model', 'positive', 'negative', 'vae', 'latent', 'image', 'seed')
 	FUNCTION = 'extract'
 
 	CATEGORY = 'BMAB/sampler'
 
-	def extract(self, bind):
+	def extract(self, bind: BMABBind):
 		if bind.pixels is not None:
 			t = bind.vae.encode(bind.pixels)
 			bind.latent_image = {'samples': t}
-		return bind,
+		return bind.model, bind.positive, bind.negative, bind.vae, bind.latent_image, bind.pixels, bind.seed,
 
 
 class BMABSeedGenerator:

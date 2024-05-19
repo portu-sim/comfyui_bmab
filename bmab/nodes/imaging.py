@@ -5,7 +5,7 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFilter
 from bmab import utils
-from bmab.utils import yolo
+from bmab.utils import yolo, sam
 from bmab.external.rmbg14.briarmbg import BriaRMBG
 from bmab.external.rmbg14.utilities import preprocess_image, postprocess_image
 from bmab.external.lama import lama_inpainting
@@ -215,3 +215,97 @@ class BMABLamaInpaint:
 		image = lama_inpainting(image, mask, device)
 		pixels = utils.pil2tensor(image)
 		return (pixels, )
+
+
+class BMABDetector:
+
+	@classmethod
+	def INPUT_TYPES(s):
+		detectors = [
+			'face_yolov8n.pt', 'face_yolov8n_v2.pt', 'face_yolov8m.pt', 'face_yolov8s.pt',
+			'hand_yolov8n.pt', 'hand_yolov8s.pt', 'person_yolov8m-seg.pt', 'person_yolov8n-seg.pt', 'person_yolov8s-seg.pt'
+		]
+		detector_models_in_path = utils.list_pretraining_models()
+		detectors.extend([m for m in detector_models_in_path if m not in detectors])
+
+		return {
+			'required': {
+				'image': ('IMAGE',),
+				'model': (detectors, ),
+			},
+		}
+
+	RETURN_TYPES = ('MASK', )
+	RETURN_NAMES = ('masks', )
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/imaging'
+
+	def process(self, image, model):
+		pil_img = utils.tensor2pil(image)
+		masks = []
+		boxes, confs = yolo.predict(pil_img, model, 0.35)
+		for box in boxes:
+			mask = Image.new('L', pil_img.size, 0)
+			dr = ImageDraw.Draw(mask, 'L')
+			x1, y1, x2, y2 = tuple(int(x) for x in box)
+			dr.rectangle((x1, y1, x2, y2), fill=255)
+			masks.append(np.array(mask).astype(np.float32) / 255.0)
+		return (torch.from_numpy(np.array(masks)), )
+
+
+class BMABSegmentAnything:
+
+	@classmethod
+	def INPUT_TYPES(s):
+		sam_model = ['sam_vit_b_01ec64.pth', 'sam_vit_l_0b3195.pth', 'sam_vit_h_4b8939.pth']
+
+		return {
+			'required': {
+				'image': ('IMAGE',),
+				'masks': ('MASK',),
+				'model': (sam_model,),
+			}
+		}
+
+	RETURN_TYPES = ('MASK',)
+	RETURN_NAMES = ('masks',)
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/imaging'
+
+	def process(self, image, model, masks=None):
+		pil_img = utils.tensor2pil(image)
+
+		results = []
+		for (batch_number, image) in enumerate(masks):
+			i = 255. * image.cpu().numpy().squeeze()
+			pil_mask = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+			box = pil_mask.getbbox()
+			mask = sam.get_array_predict_box(pil_img, box, model=model)
+			results.append(mask)
+		return (torch.from_numpy(np.array(results)), )
+
+
+class BMABMasksToImages:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'masks': ('MASK',),
+			}
+		}
+
+	RETURN_TYPES = ('IMAGE',)
+	RETURN_NAMES = ('images',)
+	FUNCTION = 'mask_to_image'
+
+	CATEGORY = 'BMAB/imaging'
+
+
+	def mask_to_image(self, masks):
+		for (batch_number, mask) in enumerate(masks):
+			mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
+		return (masks, )
+
+

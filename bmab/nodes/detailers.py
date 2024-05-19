@@ -1,6 +1,7 @@
 import comfy
 import nodes
 import math
+import numpy as np
 
 from PIL import Image
 from PIL import ImageDraw
@@ -584,4 +585,112 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		bind.pixels = utils.pil2tensor(bgimg.convert('RGB'))
 		bounding_box = utils.pil2tensor(bounding_box.convert('RGB'))
 		return (bind, bind.pixels, bounding_box)
+
+
+class BMABDetailAnything(BMABDetailer):
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'bind': ('BMAB bind',),
+				'masks': ('MASK',),
+				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
+				'cfg': ('FLOAT', {'default': 4.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+				'denoise': ('FLOAT', {'default': 0.4, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+				'upscale_ratio': ('FLOAT', {'default': 4.0, 'min': 1.0, 'max': 8.0, 'step': 0.01}),
+				'dilation': ('INT', {'default': 3, 'min': 3, 'max': 20, 'step': 1}),
+				'large_person_area_limit': ('FLOAT', {'default': 0.1, 'min': 0.01, 'max': 1.0, 'step': 0.01}),
+				'limit': ('INT', {'default': 1, 'min': 0, 'max': 20, 'step': 1}),
+			},
+			'optional': {
+				'image': ('IMAGE',),
+				'lora': ('BMAB lora',)
+			}
+		}
+
+	RETURN_TYPES = ('BMAB bind', 'IMAGE')
+	RETURN_NAMES = ('BMAB bind', 'image', )
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/detailer'
+
+	def process_img2img(self, image, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise):
+		pixels = utils.pil2tensor(image.convert('RGB'))
+		latent = dict(samples=bind.vae.encode(pixels))
+		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg, sampler_name, scheduler, bind.positive, bind.negative, latent, denoise=denoise)[0]
+		latent = bind.vae.decode(samples["samples"])
+		result = utils.tensor2pil(latent)
+		return result
+
+	def process(self, bind: BMABBind, masks, steps, cfg, sampler_name, scheduler, denoise, upscale_ratio, dilation, large_person_area_limit, limit, image=None, lora=None):
+		pixels = bind.pixels if image is None else image
+		image = utils.tensor2pil(pixels)
+
+		if lora is not None:
+			for l in lora.loras:
+				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
+
+		boxes, confs = yolo.predict(image, 'person_yolov8m-seg.pt', 0.35)
+		if len(boxes) == 0:
+			bind.pixels = pixels
+			return (bind, bind.pixels, )
+
+		for (idx, m) in enumerate(masks):
+			i = 255. * m.cpu().numpy().squeeze()
+			pil_mask = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+			box = pil_mask.getbbox()
+			x1, y1, x2, y2 = tuple(int(x) for x in box)
+
+			if limit != 0 and idx >= limit:
+				break
+
+			cropped = image.crop(box=(x1, y1, x2, y2))
+
+			area_person = cropped.width * cropped.height
+			area_image = image.width * image.height
+			ratio = area_person / area_image
+			print('AREA', area_image, (cropped.width * cropped.height), ratio)
+			if ratio > 1 and ratio >= large_person_area_limit:
+				print(f'Person is too big to process. {ratio} >= {large_person_area_limit}.')
+				continue
+
+			block_overscaled_image = True
+			auto_upscale = True
+
+			scale = upscale_ratio
+			w, h = utils.fix_size_by_scale(cropped.width, cropped.height, scale)
+			print(f'Trying x{scale} ({cropped.width},{cropped.height}) -> ({w},{h})')
+			if scale > 1 and block_overscaled_image:
+				area_scaled = w * h
+				if area_scaled > area_image:
+					print(f'It is too large to process.')
+					if not auto_upscale:
+						continue
+					print('AREA', area_image, (cropped.width * cropped.height))
+					scale = math.sqrt(area_image / (cropped.width * cropped.height))
+					w, h = utils.fix_size_by_scale(cropped.width, cropped.height, scale)
+					print(f'Auto Scale x{scale} ({cropped.width},{cropped.height}) -> ({w},{h})')
+					if scale < 1.2:
+						print(f'Scale {scale} has no effect. skip!!!!!')
+						continue
+
+			print(f'Scale {scale}')
+			enlarged = cropped.resize((w, h), Image.Resampling.LANCZOS)
+			processed = self.process_img2img(enlarged, bind, steps, cfg, sampler_name, scheduler, denoise)
+			processed = processed.resize(cropped.size, Image.Resampling.LANCZOS)
+
+			pil_mask = pil_mask.filter(ImageFilter.MaxFilter(dilation))
+			cropped_mask = pil_mask.crop((x1, y1, x2, y2))
+			blur = ImageFilter.GaussianBlur(dilation)
+			blur_mask = cropped_mask.filter(blur)
+
+			image.paste(processed, (x1, y1), mask=blur_mask)
+
+		bind.pixels = utils.pil2tensor(image.convert('RGB'))
+		return (bind, bind.pixels)
+
+
 

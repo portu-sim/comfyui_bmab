@@ -336,3 +336,10 @@ def get_file_list(base, dd):
             files.append(os.path.relpath(f, base).replace('\\', '/'))
     return files
 
+
+def get_device():
+    if sys.platform == 'darwin':
+        return 'mps'
+    elif torch.cuda.is_available():
+        return 'cuda'
+    return 'cpu'

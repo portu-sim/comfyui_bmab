@@ -10,7 +10,7 @@ def predict(image: Image, model, confidence):
 	confs = []
 	try:
 		model = YOLO(yolo)
-		pred = model(image, conf=confidence, device='')
+		pred = model(image, conf=confidence, device=utils.get_device())
 		boxes = pred[0].boxes.xyxy.cpu().numpy()
 		boxes = boxes.tolist()
 		confs = pred[0].boxes.conf.tolist()

@@ -10,10 +10,6 @@ NODE_CLASS_MAPPINGS = {
     'BMAB KSampler': nodes.BMABKSampler,
     'BMAB KSamplerHiresFix': nodes.BMABKSamplerHiresFix,
     'BMAB Upscaler': nodes.BMABUpscale,
-    'BMAB Face Detailer': nodes.BMABFaceDetailer,
-    'BMAB Person Detailer': nodes.BMABPersonDetailer,
-    'BMAB Simple Hand Detailer': nodes.BMABSimpleHandDetailer,
-    'BMAB Subframe Hand Detailer': nodes.BMABSubframeHandDetailer,
     'BMAB Resize By Person': nodes.BMABResizeByPerson,
     'BMAB Save Image': nodes.BMABSaveImage,
     'BMAB Upscale With Model': nodes.BMABUpscaleWithModel,
@@ -21,6 +17,13 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Prompt': nodes.BMABPrompt,
     'BMAB Resize and Fill': nodes.BMABResizeAndFill,
     'BMAB Google Gemini Prompt': nodes.BMABGoogleGemini,
+
+    # Detailer
+    'BMAB Face Detailer': nodes.BMABFaceDetailer,
+    'BMAB Person Detailer': nodes.BMABPersonDetailer,
+    'BMAB Simple Hand Detailer': nodes.BMABSimpleHandDetailer,
+    'BMAB Subframe Hand Detailer': nodes.BMABSubframeHandDetailer,
+    'BMAB Detail Anything': nodes.BMABDetailAnything,
 
     # Control Net
     'BMAB ControlNet': nodes.BMABControlNet,
@@ -34,6 +37,9 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Blend': nodes.BMABBlend,
     'BMAB Detect And Mask': nodes.BMABDetectAndMask,
     'BMAB Lama Inpaint': nodes.BMABLamaInpaint,
+    'BMAB Detector': nodes.BMABDetector,
+    'BMAB Segment Anything': nodes.BMABSegmentAnything,
+    'BMAB Masks To Images': nodes.BMABMasksToImages,
 
     # SD-WebUI API
     'BMAB SD-WebUI API Server': nodes.BMABApiServer,
@@ -51,10 +57,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB KSampler': 'BMAB KSampler',
     'BMAB KSamplerHiresFix': 'BMAB KSampler Hires. Fix',
     'BMAB Upscaler': 'BMAB Upscaler',
-    'BMAB Face Detailer': 'BMAB Face Detailer',
-    'BMAB Person Detailer': 'BMAB Person Detailer',
-    'BMAB Simple Hand Detailer': 'BMAB Simple Hand Detailer',
-    'BMAB Subframe Hand Detailer': 'BMAB Subframe Hand Detailer',
     'BMAB Resize By Person': 'BMAB Resize By Person',
     'Extractor': 'BMAB Extractor',
     'SeedGenerator': 'BMAB Seed Generator',
@@ -65,6 +67,13 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Prompt': 'BMAB Prompt',
     'BMAB Resize and Fill': 'BMAB Resize And Fill',
     'BMAB Google Gemini Prompt': 'BMAB Google Gemini API',
+
+    # Detailer
+    'BMAB Face Detailer': 'BMAB Face Detailer',
+    'BMAB Person Detailer': 'BMAB Person Detailer',
+    'BMAB Simple Hand Detailer': 'BMAB Simple Hand Detailer',
+    'BMAB Subframe Hand Detailer': 'BMAB Subframe Hand Detailer',
+    'BMAB Detail Anything': 'BMAB Detail Anything',
 
     # Control Net
     'BMAB ControlNet': 'BMAB ControlNet',
@@ -78,6 +87,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Blend': 'BMAB Blend',
     'BMAB Detect And Mask': 'BMAB Detect And Mask',
     'BMAB Lama Inpaint': 'BMAB Lama Inpaint',
+    'BMAB Detector': 'BMAB Detector',
+    'BMAB Segment Anything': 'BMAB Segment Anything',
+    'BMAB Masks To Images': 'BMAB Masks To Images',
 
     # SD-WebUI API
     'BMAB SD-WebUI API Server': 'BMAB SD-WebUI API Server',
