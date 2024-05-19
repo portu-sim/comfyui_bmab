@@ -6,8 +6,9 @@ import numpy as np
 import folder_paths
 import node_helpers
 from PIL import Image
-from PIL import ImageSequence
 from PIL import ImageOps
+from PIL import ImageDraw
+from PIL import ImageSequence
 from bmab import utils
 from bmab.nodes.binder import BMABBind
 
@@ -94,7 +95,7 @@ class BMABControlNet:
 		image_in = kwargs.get('image_in')
 		if image_in is None:
 			print('NONE image use file.')
-			output_image, output_mask = self.load_image(image_in)
+			output_image, output_mask = self.load_image(image)
 			bgimg = output_image
 		else:
 			bgimg = image_in
@@ -128,6 +129,17 @@ class BMABControlNet:
 
 
 class BMABControlNetOpenpose(BMABControlNet):
+
+	def __init__(self) -> None:
+		super().__init__()
+
+		self.case = None
+		self.cache = None
+
+	def changed(self, c):
+		if self.case is None:
+			return True
+		return not all((a == b for a, b in zip(self.case, c)))
 
 	@classmethod
 	def INPUT_TYPES(s):
@@ -168,9 +180,120 @@ class BMABControlNetOpenpose(BMABControlNet):
 
 	def apply_controlnet(self, bind: BMABBind, control_net_name, strength, start_percent, end_percent, image, **kwargs):
 		from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
-		bgimg, _ = self.load_image(image)
-		prepro = OpenPose_Preprocessor()
-		r = prepro.estimate_pose(bgimg, kwargs.get('detect_hand'), kwargs.get('detect_body'), kwargs.get('detect_face'), kwargs.get('resolution'))
-		pixels = r['result'][0]
+		detect_hand, detect_body, detect_face = kwargs.get('detect_hand'), kwargs.get('detect_body'), kwargs.get('detect_face')
+		c = (image, detect_hand, detect_body, detect_face)
+		if self.changed(c):
+			bgimg, _ = self.load_image(image)
+			prepro = OpenPose_Preprocessor()
+			r = prepro.estimate_pose(bgimg, detect_hand, detect_body, detect_face, kwargs.get('resolution'))
+			pixels = r['result'][0]
+			self.case = c
+			self.cache = pixels
+		else:
+			pixels = self.cache
 		return super().apply_controlnet(bind, control_net_name, strength, start_percent, end_percent, image, image_in=pixels, **kwargs)
+
+
+class BMABControlNetIPAdapter(BMABControlNet):
+
+	def __init__(self) -> None:
+		super().__init__()
+
+		self.case = None
+		self.cache = None
+
+	def changed(self, c):
+		if self.case is None:
+			return True
+		return not all((a == b for a, b in zip(self.case, c)))
+
+	@classmethod
+	def INPUT_TYPES(s):
+		input_dir = folder_paths.get_input_directory()
+		files = sorted([f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))])
+
+		try:
+			from ComfyUI_IPAdapter_plus import IPAdapterPlus
+			return {
+				'required': {
+					'bind': ('BMAB bind',),
+					'ipadapter_file': (folder_paths.get_filename_list('ipadapter'),),
+					'clip_name': (folder_paths.get_filename_list('clip_vision'), ),
+					'weight': ('FLOAT', {'default': 1.0, 'min': -1, 'max': 5, 'step': 0.05}),
+					'weight_type': (IPAdapterPlus. WEIGHT_TYPES,),
+					'combine_embeds': (['concat', 'add', 'subtract', 'average', 'norm average'],),
+					'start_at': ('FLOAT', {'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.001}),
+					'end_at': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 1.0, 'step': 0.001}),
+					'embeds_scaling': (['V only', 'K+V', 'K+V w/ C penalty', 'K+mean(V) w/ C penalty'],),
+					'resolution': ('INT', {'default': 512, 'min': 128, 'max': 1024, 'step': 8}),
+					'image': (files, {'image_upload': True}),
+				}
+			}
+
+		except:
+			print('failed to load ComfyUI_IPAdapter_plus')
+
+		return {
+			'required': {
+				'text': (
+					'STRING',
+					{
+						'default': 'Cannot Load ComfyUI_IPAdapter_plus. To use this node, install ComfyUI_IPAdapter_plus',
+						'multiline': True,
+						'dynamicPrompts': True
+					}
+				),
+			}
+		}
+
+	FUNCTION = 'apply_ipadapter'
+
+	def load_ipadapter_model(self, ipadapter_file):
+		from ComfyUI_IPAdapter_plus.utils import ipadapter_model_loader
+		ipadapter_file = folder_paths.get_full_path("ipadapter", ipadapter_file)
+		return ipadapter_model_loader(ipadapter_file)
+
+	def load_clip(self, clip_name):
+		clip_path = folder_paths.get_full_path("clip_vision", clip_name)
+		clip_vision = comfy.clip_vision.load(clip_path)
+		return clip_vision
+
+	def resize_and_fill(self, bgimg, resolution):
+		width, height = resolution, resolution
+		resized = Image.new('RGB', (width, height), 0)
+
+		mask = Image.new('L', (width, height), 0)
+		dr = ImageDraw.Draw(mask, 'L')
+
+		iratio = width / height
+		cratio = bgimg.width / bgimg.height
+		if iratio < cratio:
+			ratio = width / bgimg.width
+			w, h = int(bgimg.width * ratio), int(bgimg.height * ratio)
+			y0 = (height - h) // 2
+			dr.rectangle((0, y0, w, y0 + h), fill=255)
+			resized.paste(bgimg.resize((w, h), Image.Resampling.LANCZOS), (0, y0))
+		else:
+			ratio = height / bgimg.height
+			w, h = int(bgimg.width * ratio), int(bgimg.height * ratio)
+			x0 = (width - w) // 2
+			dr.rectangle((x0, 0, x0 + w, h), fill=255)
+			resized.paste(bgimg.resize((w, h), Image.Resampling.LANCZOS), (x0, 0))
+
+		return resized, mask
+
+	def apply_ipadapter(self, bind: BMABBind, ipadapter_file, clip_name, weight, weight_type, combine_embeds, start_at, end_at, embeds_scaling, resolution, image):
+		from ComfyUI_IPAdapter_plus.IPAdapterPlus import IPAdapterAdvanced
+
+		pixels, mask = self.load_image(image)
+		bgimg = utils.tensor2pil(pixels).convert('RGB')
+		resized, mask = self.resize_and_fill(bgimg, resolution)
+		pixels = utils.pil2tensor(resized)
+
+		ipadapter = IPAdapterAdvanced()
+		ipadapter_model = self.load_ipadapter_model(ipadapter_file)
+		clip = self.load_clip(clip_name)
+		work_model, face_image = ipadapter.apply_ipadapter(bind.model, ipadapter_model, start_at, end_at, weight, weight_type=weight_type, combine_embeds=combine_embeds, embeds_scaling=embeds_scaling, image=pixels, clip_vision=clip)
+		bind.model = work_model
+		return (bind, )
 

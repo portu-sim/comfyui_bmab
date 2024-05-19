@@ -315,3 +315,14 @@ def load_module(file_name, module_name):
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def get_blur_mask(size, box, dilation):
+    mask = Image.new('L', size, 0)
+    dr = ImageDraw.Draw(mask, 'L')
+    dr.rectangle(box, fill=255)
+    if dilation == 0:
+        return mask
+    blur = ImageFilter.GaussianBlur(dilation)
+    return mask.filter(blur)
+

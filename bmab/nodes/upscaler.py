@@ -55,7 +55,6 @@ class BMABResizeAndFill:
 	def INPUT_TYPES(s):
 		return {
 			'required': {
-				'scale': ('FLOAT', {'default': 2.0, 'min': 0, 'max': 4.0, 'step': 0.001}),
 				'width': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 				'height': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 			},
@@ -70,16 +69,13 @@ class BMABResizeAndFill:
 
 	CATEGORY = 'BMAB/upscale'
 
-	def upscale(self, image, scale, width, height):
+	def upscale(self, image, width, height):
 		bgimg = utils.tensor2pil(image)
 
 		resized = Image.new('RGB', (width, height), 0)
 
 		mask = Image.new('L', (width, height), 0)
 		dr = ImageDraw.Draw(mask, 'L')
-
-		if scale != 0:
-			width, height = int(width * scale), int(height * scale)
 
 		iratio = width / height
 		cratio = bgimg.width / bgimg.height
@@ -107,6 +103,7 @@ class BMABUpscaleWithModel:
 		return {
 			"required": {
 				"model_name": (folder_paths.get_filename_list("upscale_models"),),
+				'scale': ('FLOAT', {'default': 2.0, 'min': 0, 'max': 4.0, 'step': 0.001}),
 				'width': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 				'height': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 			},
@@ -130,8 +127,11 @@ class BMABUpscaleWithModel:
 		out = model_loading.load_state_dict(sd).eval()
 		return out
 
-	def upscale(self, model_name, width, height, bind: BMABBind=None, image=None):
+	def upscale(self, model_name, scale, width, height, bind: BMABBind=None, image=None):
 		pixels = bind.pixels if image is None else image
+		if scale != 0:
+			_, h, w, c = pixels.shape
+			width, height = int(w * scale), int(h * scale)
 
 		device = model_management.get_torch_device()
 

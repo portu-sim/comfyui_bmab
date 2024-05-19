@@ -25,6 +25,7 @@ NODE_CLASS_MAPPINGS = {
     # Control Net
     'BMAB ControlNet': nodes.BMABControlNet,
     'BMAB ControlNet Openpose': nodes.BMABControlNetOpenpose,
+    'BMAB ControlNet IPAdapter': nodes.BMABControlNetIPAdapter,
 
     # Imaging
     'BMAB Detection Crop': nodes.BMABDetectionCrop,
@@ -68,6 +69,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     # Control Net
     'BMAB ControlNet': 'BMAB ControlNet',
     'BMAB ControlNet Openpose': 'BMAB ControlNet Openpose',
+    'BMAB ControlNet IPAdapter': 'BMAB ControlNet IPAdapter',
 
     # Imaging
     'BMAB Detection Crop': 'BMAB Detection Crop',
