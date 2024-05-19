@@ -11,5 +11,5 @@ from .sampler import BMABKSampler, BMABKSamplerHiresFix, BMABPrompt, BMABIntegra
 from .upscaler import BMABUpscale, BMABUpscaleWithModel, BMABResizeAndFill
 from .toy import BMABGoogleGemini
 from .a1111api import BMABApiServer, BMABApiSDWebUIT2I, BMABApiSDWebUIT2IHiresFix, BMABApiSDWebUIControlNet
-from .a1111api import BMABApiSDWebUIBMABExtension
+from .a1111api import BMABApiSDWebUIBMABExtension, BMABApiSDWebUII2I
 

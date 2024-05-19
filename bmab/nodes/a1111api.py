@@ -1,6 +1,11 @@
 import os
 import json
 import requests
+import copy
+
+import threading
+import time
+import comfy
 
 from PIL import Image
 from bmab import utils
@@ -11,17 +16,13 @@ import folder_paths
 
 
 def b64_encoding(image):
-    buffered = BytesIO()
-    image.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
+	buffered = BytesIO()
+	image.save(buffered, format="PNG")
+	return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
 def b64_decoding(b64):
-    return Image.open(BytesIO(base64.b64decode(b64)))
-
-
-class BMABApiBase:
-	pass
+	return Image.open(BytesIO(base64.b64decode(b64)))
 
 
 class ApiServer:
@@ -145,18 +146,15 @@ class ApiServer:
 			return []
 
 	def get_model(self):
-		url = self.get('sdapi/v1/options')
-		response = requests.get(url)
-		response.raise_for_status()
-		j = response.json()
+		j = self.get('sdapi/v1/options')
 		return j['sd_model_checkpoint']
 
 	def change_model(self, name):
-		url = self.get('sdapi/v1/options')
 		data = {'sd_model_checkpoint': name}
-		response = requests.post(url, data=json.dumps(data))
-		response.raise_for_status()
-		print('change model to', name)
+		self.post('sdapi/v1/options', data=json.dumps(data))
+
+	def get_progress(self):
+		return self.get('sdapi/v1/progress')
 
 
 class BMABApiServer:
@@ -166,27 +164,32 @@ class BMABApiServer:
 			'required': {
 				'server_ip_address': ('STRING', {'default': '127.0.0.1', 'multiline': False}),
 				'server_port': ('INT', {'default': 7860, 'min': 1, 'max': 65535, 'step': 1}),
+				'checkpoint': (ApiServer.get_checkpoint(),),
 			}
 		}
 
-	RETURN_TYPES = ('API Server', )
-	RETURN_NAMES = ('server', )
+	RETURN_TYPES = ('API Server',)
+	RETURN_NAMES = ('server',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/sdwebui'
 
-	def process(self, server_ip_address, server_port):
+	def process(self, server_ip_address, server_port, checkpoint):
 		api_server = ApiServer(server_ip_address, server_port)
 		api_server.get_all_info()
-		return (api_server, )
+		if checkpoint != 'use same checkpoint':
+			server_checkpoint = api_server.get_model()
+			if checkpoint != server_checkpoint:
+				api_server.change_model(checkpoint)
+		return (api_server,)
 
 
-class BMABApiSDWebUIT2I(BMABApiBase):
+class BMABApiSDWebUIT2I:
 	@classmethod
 	def INPUT_TYPES(s):
 		return {
 			'required': {
-				'api_server': ('API Server', ),
+				'api_server': ('API Server',),
 				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'negative_prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'width': ('INT', {'default': 512, 'min': 128, 'max': 4000, 'step': 1}),
@@ -196,14 +199,14 @@ class BMABApiSDWebUIT2I(BMABApiBase):
 				'seed': ('INT', {'default': -1, 'min': -1, 'max': 1000000, 'step': 1}),
 			},
 			'optional': {
-				'hires_fix': ('Hires.fix', ),
-				'extension': ('EXTENSION', ),
+				'hires_fix': ('Hires.fix',),
+				'extension': ('EXTENSION',),
 				'controlnet': ('ControlNet',),
 			}
 		}
 
-	RETURN_TYPES = ('API Server', 'IMAGE', )
-	RETURN_NAMES = ('API Server', 'image', )
+	RETURN_TYPES = ('API Server', 'IMAGE',)
+	RETURN_NAMES = ('API Server', 'image',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/sdwebui'
@@ -238,19 +241,128 @@ class BMABApiSDWebUIT2I(BMABApiBase):
 
 		# print(json.dumps(txt2img, indent=2))
 
-		res = api_server.post('sdapi/v1/txt2img', txt2img)
-		try:
-			j = res.json()
+		def _call_func(c, data):
+			res = api_server.post('sdapi/v1/txt2img', data)
+			try:
+				j = res.json()
+				images = j['images']
+				image = b64_decoding(images[0])
+				c.image = image
+			except:
+				print(res)
+			print('done')
 
-			images = j['images']
-			image = b64_decoding(images[0])
-		except:
-			print(res)
+		self.image = None
+		th = threading.Thread(target=_call_func, args=(self, txt2img))
+		th.start()
+		pbar = comfy.utils.ProgressBar(steps)
 
+		while(self.image is None):
+			j = api_server.get_progress()
+			prog = int(j['progress'] * 100)
+			time.sleep(0.5)
+			pbar.update_absolute(prog, 100)
+
+		th.join()
 		# image = Image.new('RGB', (512, 512))
-		pixels = utils.pil2tensor(image.convert('RGB'))
+		pixels = utils.pil2tensor(self.image.convert('RGB'))
+		return (api_server, pixels,)
 
-		return (api_server, pixels, )
+
+class BMABApiSDWebUII2I:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'api_server': ('API Server',),
+				'image': ('IMAGE',),
+				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+				'negative_prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 1000, 'step': 1}),
+				'cfg_scale': ('INT', {'default': 7, 'min': 0, 'max': 20, 'step': 0.1}),
+				'seed': ('INT', {'default': -1, 'min': -1, 'max': 1000000, 'step': 1}),
+				'sampler': (ApiServer.get_sampler(),),
+				'scheduler': (ApiServer.get_scheduler(),),
+				'checkpoint': (ApiServer.get_checkpoint(),),
+			},
+			'optional': {
+				'extension': ('EXTENSION',),
+				'controlnet': ('ControlNet',),
+			}
+		}
+
+	RETURN_TYPES = ('API Server', 'IMAGE',)
+	RETURN_NAMES = ('API Server', 'image',)
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/sdwebui'
+
+	def process(self, api_server: ApiServer, image, prompt, negative_prompt, steps, cfg_scale, seed, sampler, scheduler, checkpoint, extension=None, controlnet=None):
+		pixels = image
+		image = utils.tensor2pil(pixels)
+
+		img2img = {
+			'init_images': [b64_encoding(image)],
+			'prompt': prompt,
+			'negative_prompt': negative_prompt,
+			'steps': steps,
+			'width': image.width,
+			'height': image.height,
+			'cfg_scale': cfg_scale,
+			'seed': seed,
+			'batch_size': 1,
+			'denoising_strength': 0.5,
+			'hr_second_pass_steps': steps,
+			'resize_mode': 0,
+			'script_name': None,
+			'script_args': [],
+			'alwayson_scripts': {}
+		}
+
+		if extension is not None:
+			img2img['alwayson_scripts'].update(extension)
+
+		if controlnet is not None:
+			img2img['alwayson_scripts'].update(controlnet)
+
+		if sampler != 'use same sampler':
+			img2img['sampler_name'] = sampler
+		if scheduler != 'use same scheduler':
+			img2img['scheduler'] = scheduler
+		# if checkpoint != 'use same checkpoint':
+		# 	img2img['hr_checkpoint_name'] = checkpoint
+
+		# print(json.dumps(txt2img, indent=2))
+
+		def _call_func(c, data):
+			res = api_server.post('sdapi/v1/img2img', data)
+			try:
+				j = res.json()
+				images = j['images']
+				image = b64_decoding(images[0])
+				c.image = image
+			except:
+				print(res)
+				c.image = 'ERROR'
+			print('done')
+
+		self.image = None
+		th = threading.Thread(target=_call_func, args=(self, img2img))
+		th.start()
+		pbar = comfy.utils.ProgressBar(steps)
+
+		while(self.image is None):
+			j = api_server.get_progress()
+			prog = int(j['progress'] * 100)
+			time.sleep(0.5)
+			pbar.update_absolute(prog, 100)
+
+		th.join()
+		# image = Image.new('RGB', (512, 512))
+		if not isinstance(self.image, str):
+			pixels = utils.pil2tensor(self.image.convert('RGB'))
+
+		return (api_server, pixels,)
 
 
 class BMABApiSDWebUIT2IHiresFix:
@@ -260,7 +372,7 @@ class BMABApiSDWebUIT2IHiresFix:
 			'required': {
 				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'negative_prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
-				'upscaler': (ApiServer.get_upscaler(), ),
+				'upscaler': (ApiServer.get_upscaler(),),
 				'sampler': (ApiServer.get_sampler(),),
 				'scheduler': (ApiServer.get_scheduler(),),
 				'checkpoint': (ApiServer.get_checkpoint(),),
@@ -295,7 +407,7 @@ class BMABApiSDWebUIT2IHiresFix:
 		if checkpoint != 'use same checkpoint':
 			hires_fix['hr_checkpoint_name'] = checkpoint
 
-		return (hires_fix, )
+		return (hires_fix,)
 
 
 class BMABApiSDWebUIBMABExtension:
@@ -307,8 +419,8 @@ class BMABApiSDWebUIBMABExtension:
 			}
 		}
 
-	RETURN_TYPES = ('EXTENSION', )
-	RETURN_NAMES = ('extension', )
+	RETURN_TYPES = ('EXTENSION',)
+	RETURN_NAMES = ('extension',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/sdwebui'
@@ -332,7 +444,7 @@ class BMABApiSDWebUIBMABExtension:
 			'module_config.controlnet.noise_hiresfix': 'Low res only',
 		}
 		extension['BMAB']['args'][0].update(b)
-		return (extension, )
+		return (extension,)
 
 
 class BMABApiSDWebUIControlNet:
@@ -349,8 +461,8 @@ class BMABApiSDWebUIControlNet:
 				'weight': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				'start': ('FLOAT', {'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				'end': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
-				'mode': (('Balanced', 'My prompt is more important', 'ControlNet is more important'), ),
-				'resize_mode': (('Crop and Resize', 'Just Resize', 'Resize and Fill', ), ),
+				'mode': (('Balanced', 'My prompt is more important', 'ControlNet is more important'),),
+				'resize_mode': (('Crop and Resize', 'Just Resize', 'Resize and Fill',),),
 				'image': (files, {'image_upload': True}),
 			},
 			'optional': {
@@ -371,6 +483,8 @@ class BMABApiSDWebUIControlNet:
 					'args': []
 				},
 			}
+		else:
+			controlnet = copy.deepcopy(controlnet)
 		input_dir = folder_paths.get_input_directory()
 		image_path = os.path.join(input_dir, image)
 		img = Image.open(image_path)
@@ -390,5 +504,4 @@ class BMABApiSDWebUIControlNet:
 			'threshold_b': 0.5,
 		}
 		controlnet['ControlNet']['args'].append(b)
-		return (controlnet, )
-
+		return (controlnet,)

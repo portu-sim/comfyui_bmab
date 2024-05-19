@@ -44,6 +44,7 @@ NODE_CLASS_MAPPINGS = {
     # SD-WebUI API
     'BMAB SD-WebUI API Server': nodes.BMABApiServer,
     'BMAB SD-WebUI API T2I': nodes.BMABApiSDWebUIT2I,
+    'BMAB SD-WebUI API I2I': nodes.BMABApiSDWebUII2I,
     'BMAB SD-WebUI API T2I Hires.Fix': nodes.BMABApiSDWebUIT2IHiresFix,
     'BMAB SD-WebUI API BMAB Extension': nodes.BMABApiSDWebUIBMABExtension,
     'BMAB SD-WebUI API ControlNet': nodes.BMABApiSDWebUIControlNet,
@@ -94,6 +95,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     # SD-WebUI API
     'BMAB SD-WebUI API Server': 'BMAB SD-WebUI API Server',
     'BMAB SD-WebUI API T2I': 'BMAB SD-WebUI API T2I',
+    'BMAB SD-WebUI API I2I': 'BMAB SD-WebUI API I2I',
     'BMAB SD-WebUI API T2I Hires.Fix': 'BMAB SD-WebUI API T2I Hires.Fix',
     'BMAB SD-WebUI API BMAB Extension': 'BMAB SD-WebUI API BMAB Extension',
     'BMAB SD-WebUI API ControlNet': 'BMAB SD-WebUI API ControlNet',
