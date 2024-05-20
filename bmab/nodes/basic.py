@@ -139,7 +139,7 @@ class BMABBasic:
 
 			results.append(bgimg)
 
-		bind.pixels = utils.pil2tensor(results)
+		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels,)
 
 
