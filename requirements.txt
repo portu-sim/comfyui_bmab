@@ -8,4 +8,5 @@ transformers>=4.39.1
 basicsr>=1.4.2
 blendmodes
 opencv-python
+urllib3
 

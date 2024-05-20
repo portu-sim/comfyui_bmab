@@ -6,6 +6,8 @@ import torch
 import numpy as np
 import glob
 import importlib.util
+
+from urllib.parse import urlparse
 from torch.hub import download_url_to_file, get_dir
 
 from PIL import Image
@@ -14,17 +16,12 @@ from PIL import ImageFilter
 
 
 def pil2tensor(image):
-    return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)
+    i = np.array(image).astype(np.float32) / 255.0
+    return torch.from_numpy(i).unsqueeze(0)
 
 
 def merge(t1, t2):
     torch.concat([t1, t2])
-
-
-def pil2tensor_mask(mask):
-    mask = np.array(mask).astype(np.float32) / 255.0
-    mask = torch.from_numpy(mask)
-    return mask
 
 
 def tensor2pil(image):
@@ -354,3 +351,29 @@ def get_device():
     elif torch.cuda.is_available():
         return 'cuda'
     return 'cpu'
+
+
+def get_pils_from_pixels(pixels):
+    pil_images = []
+    for (batch_number, pixels) in enumerate(pixels):
+        i = 255. * pixels.cpu().numpy().squeeze()
+        img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+        pil_images.append(img)
+    return pil_images
+
+
+def get_pixels_from_pils(pil_imgs):
+    pixels = []
+    for (batch_number, pil_img) in enumerate(pil_imgs):
+        i = np.array(pil_img).astype(np.float32) / 255.0
+        pixels.append(i)
+    return torch.from_numpy(np.array(pixels))
+
+
+def dilate_mask(mask, dilation):
+    if dilation < 4:
+        return mask
+    arr = np.array(mask)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (dilation, dilation))
+    arr = cv2.dilate(arr, kernel, iterations=1)
+    return Image.fromarray(arr)

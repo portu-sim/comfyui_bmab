@@ -44,12 +44,13 @@ class BMABUpscale:
 			'BICUBIC': Image.Resampling.BICUBIC,
 			'NEAREST': Image.Resampling.NEAREST,
 		}
-		bgimg = utils.tensor2pil(pixels)
-		if scale != 0:
-			width, height = int(bgimg.width * scale), int(bgimg.height * scale)
-		method = pil_upscale_methods.get(upscale_method)
-		bgimg = bgimg.resize((width, height), method)
-		pixels = utils.pil2tensor(bgimg.convert('RGB'))
+		results = []
+		for bgimg in utils.get_pils_from_pixels(pixels):
+			if scale != 0:
+				width, height = int(bgimg.width * scale), int(bgimg.height * scale)
+			method = pil_upscale_methods.get(upscale_method)
+			results.append(bgimg.resize((width, height), method))
+		pixels = utils.get_pixels_from_pils(results)
 		return BMABBind.result(bind, pixels, )
 
 
@@ -73,30 +74,33 @@ class BMABResizeAndFill:
 	CATEGORY = 'BMAB/upscale'
 
 	def upscale(self, image, width, height):
-		bgimg = utils.tensor2pil(image)
+		results = []
+		masks = []
+		for bgimg in utils.get_pils_from_pixels(image):
+			resized = Image.new('RGB', (width, height), 0)
 
-		resized = Image.new('RGB', (width, height), 0)
+			mask = Image.new('L', (width, height), 0)
+			dr = ImageDraw.Draw(mask, 'L')
 
-		mask = Image.new('L', (width, height), 0)
-		dr = ImageDraw.Draw(mask, 'L')
+			iratio = width / height
+			cratio = bgimg.width / bgimg.height
+			if iratio < cratio:
+				ratio = width / bgimg.width
+				w, h = int(bgimg.width * ratio), int(bgimg.height * ratio)
+				y0 = (height - h) // 2
+				dr.rectangle((0, y0, w, y0 + h), fill=255)
+				resized.paste(bgimg.resize((w, h), Image.Resampling.LANCZOS), (0, y0))
+			else:
+				ratio = height / bgimg.height
+				w, h = int(bgimg.width * ratio), int(bgimg.height * ratio)
+				x0 = (width - w) // 2
+				dr.rectangle((x0, 0, x0 + w, h), fill=255)
+				resized.paste(bgimg.resize((w, h), Image.Resampling.LANCZOS), (x0, 0))
+			results.append(resized)
+			masks.append(mask)
 
-		iratio = width / height
-		cratio = bgimg.width / bgimg.height
-		if iratio < cratio:
-			ratio = width / bgimg.width
-			w, h = int(bgimg.width * ratio), int(bgimg.height * ratio)
-			y0 = (height - h) // 2
-			dr.rectangle((0, y0, w, y0 + h), fill=255)
-			resized.paste(bgimg.resize((w, h), Image.Resampling.LANCZOS), (0, y0))
-		else:
-			ratio = height / bgimg.height
-			w, h = int(bgimg.width * ratio), int(bgimg.height * ratio)
-			x0 = (width - w) // 2
-			dr.rectangle((x0, 0, x0 + w, h), fill=255)
-			resized.paste(bgimg.resize((w, h), Image.Resampling.LANCZOS), (x0, 0))
-
-		pixels = utils.pil2tensor(resized.convert('RGB'))
-		mask_pixels = utils.pil2tensor_mask(mask).unsqueeze(0)
+		pixels = utils.get_pixels_from_pils(results)
+		mask_pixels = utils.get_pixels_from_pils(results)
 		return (pixels, mask_pixels, )
 
 
@@ -130,14 +134,8 @@ class BMABUpscaleWithModel:
 		out = model_loading.load_state_dict(sd).eval()
 		return out
 
-	def upscale(self, model_name, scale, width, height, bind: BMABBind=None, image=None):
-		pixels = bind.pixels if image is None else image
-		if scale != 0:
-			_, h, w, c = pixels.shape
-			width, height = int(w * scale), int(h * scale)
-
+	def upscale_with_model(self, model_name, pixels):
 		device = model_management.get_torch_device()
-
 		upscale_model = self.load_model(model_name)
 		memory_required = model_management.module_size(upscale_model)
 		memory_required += (512 * 512 * 3) * pixels.element_size() * max(upscale_model.scale, 1.0) * 384.0  # The 384.0 is an estimate of how much some of these models take, TODO: make it more accurate
@@ -163,10 +161,17 @@ class BMABUpscaleWithModel:
 					raise e
 
 		upscale_model.cpu()
-		s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
+		return torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
 
-		bgimg = utils.tensor2pil(s)
-		bgimg = bgimg.resize((width, height), Image.Resampling.LANCZOS)
-		pixels = utils.pil2tensor(bgimg.convert('RGB'))
+	def upscale(self, model_name, scale, width, height, bind: BMABBind=None, image=None):
+		pixels = bind.pixels if image is None else image
+		if scale != 0:
+			_, h, w, c = pixels.shape
+			width, height = int(w * scale), int(h * scale)
+
+		s = self.upscale_with_model(model_name, pixels)
+		pil_images = utils.get_pils_from_pixels(s)
+		results = [img.resize((width, height), Image.Resampling.LANCZOS) for img in pil_images]
+		pixels = utils.get_pixels_from_pils(results)
 
 		return BMABBind.result(bind, pixels,)

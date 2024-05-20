@@ -18,7 +18,7 @@ def dino_init():
 		print('initialize grounding dino.')
 		swint_ogc = utils.lazy_loader('GroundingDINO_SwinT_OGC.py')
 		swint_ogc_pth = utils.lazy_loader('groundingdino_swint_ogc.pth')
-		dino_model = load_model(swint_ogc, swint_ogc_pth)
+		dino_model = load_model(swint_ogc, swint_ogc_pth, device=utils.get_device())
 	return dino_model
 
 
@@ -36,6 +36,7 @@ def dino_predict(pilimg, prompt, box_threahold=0.35, text_threshold=0.25):
 
 	model = dino_init()
 	boxes, logits, phrases = predict(
+		device=utils.get_device(),
 		model=model,
 		image=image,
 		caption=prompt,

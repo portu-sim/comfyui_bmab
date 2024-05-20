@@ -82,49 +82,52 @@ class BMABFaceDetailer(BMABDetailer):
 
 	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
-		bgimg = utils.tensor2pil(pixels)
 
-		if bind.context is not None:
-			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+		results = []
+		for bgimg in utils.get_pils_from_pixels(pixels):
+			if bind.context is not None:
+				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
-		if lora is not None:
-			for l in lora.loras:
-				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
+			if lora is not None:
+				for l in lora.loras:
+					bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
-		boxes, confs = utils.yolo.predict(bgimg, 'face_yolov8n.pt', 0.35)
-		for box, conf in zip(boxes, confs):
-			x1, y1, x2, y2 = tuple(int(x) for x in box)
-			x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
-			cbx = utils.get_box_with_padding(bgimg, (x1, y1, x2, y2), padding)
-			cropped = bgimg.crop(cbx)
-			resized = utils.resize_and_fill(cropped, width, height)
-			face = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
-			face = self.apply_color_correction(resized, face)
+			boxes, confs = utils.yolo.predict(bgimg, 'face_yolov8n.pt', 0.35)
+			for box, conf in zip(boxes, confs):
+				x1, y1, x2, y2 = tuple(int(x) for x in box)
+				x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
+				cbx = utils.get_box_with_padding(bgimg, (x1, y1, x2, y2), padding)
+				cropped = bgimg.crop(cbx)
+				resized = utils.resize_and_fill(cropped, width, height)
+				face = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+				face = self.apply_color_correction(resized, face)
 
-			iratio = width / height
-			cratio = cropped.width / cropped.height
-			if iratio < cratio:
-				ratio = cropped.width / width
-				face = face.resize((int(face.width * ratio), int(face.height * ratio)))
-				y0 = (face.height - cropped.height) // 2
-				face = face.crop((0, y0, cropped.width, y0 + cropped.height))
-			else:
-				ratio = cropped.height / height
-				face = face.resize((int(face.width * ratio), int(face.height * ratio)))
-				x0 = (face.width - cropped.width) // 2
-				face = face.crop((x0, 0, x0 + cropped.width, cropped.height))
+				iratio = width / height
+				cratio = cropped.width / cropped.height
+				if iratio < cratio:
+					ratio = cropped.width / width
+					face = face.resize((int(face.width * ratio), int(face.height * ratio)))
+					y0 = (face.height - cropped.height) // 2
+					face = face.crop((0, y0, cropped.width, y0 + cropped.height))
+				else:
+					ratio = cropped.height / height
+					face = face.resize((int(face.width * ratio), int(face.height * ratio)))
+					x0 = (face.width - cropped.width) // 2
+					face = face.crop((x0, 0, x0 + cropped.width, cropped.height))
 
-			mask = Image.new('L', bgimg.size, 0)
-			dr = ImageDraw.Draw(mask, 'L')
-			dr.rectangle((x1, y1, x2, y2), fill=255)
-			blur = ImageFilter.GaussianBlur(10)
-			mask = mask.filter(blur)
+				mask = Image.new('L', bgimg.size, 0)
+				dr = ImageDraw.Draw(mask, 'L')
+				dr.rectangle((x1, y1, x2, y2), fill=255)
+				blur = ImageFilter.GaussianBlur(10)
+				mask = mask.filter(blur)
 
-			img = bgimg.copy()
-			img.paste(face, (cbx[0], cbx[1]))
-			bgimg.paste(img, (0, 0), mask=mask)
+				img = bgimg.copy()
+				img.paste(face, (cbx[0], cbx[1]))
+				bgimg.paste(img, (0, 0), mask=mask)
 
-		bind.pixels = utils.pil2tensor(bgimg.convert('RGB'))
+				results.append(bgimg.convert('RGB'))
+
+		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
 
 
@@ -166,7 +169,6 @@ class BMABPersonDetailer(BMABDetailer):
 
 	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, upscale_ratio, dilation_mask, large_person_area_limit, limit, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
-		image = utils.tensor2pil(pixels)
 
 		if bind.context is not None:
 			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
@@ -175,61 +177,65 @@ class BMABPersonDetailer(BMABDetailer):
 			for l in lora.loras:
 				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
-		boxes, confs = yolo.predict(image, 'person_yolov8m-seg.pt', 0.35)
-		if len(boxes) == 0:
-			bind.pixels = pixels
-			return (bind, bind.pixels, )
+		results = []
+		for image in utils.get_pils_from_pixels(pixels):
 
-		for idx, (box, conf) in enumerate(zip(boxes, confs)):
-			x1, y1, x2, y2 = tuple(int(x) for x in box)
+			boxes, confs = yolo.predict(image, 'person_yolov8m-seg.pt', 0.35)
+			if len(boxes) == 0:
+				bind.pixels = pixels
+				return (bind, bind.pixels, )
 
-			if limit != 0 and idx >= limit:
-				break
+			for idx, (box, conf) in enumerate(zip(boxes, confs)):
+				x1, y1, x2, y2 = tuple(int(x) for x in box)
 
-			cropped = image.crop(box=(x1, y1, x2, y2))
+				if limit != 0 and idx >= limit:
+					break
 
-			area_person = cropped.width * cropped.height
-			area_image = image.width * image.height
-			ratio = area_person / area_image
-			print('AREA', area_image, (cropped.width * cropped.height), ratio)
-			if ratio > 1 and ratio >= large_person_area_limit:
-				print(f'Person is too big to process. {ratio} >= {large_person_area_limit}.')
-				continue
+				cropped = image.crop(box=(x1, y1, x2, y2))
 
-			block_overscaled_image = True
-			auto_upscale = True
+				area_person = cropped.width * cropped.height
+				area_image = image.width * image.height
+				ratio = area_person / area_image
+				print('AREA', area_image, (cropped.width * cropped.height), ratio)
+				if ratio > 1 and ratio >= large_person_area_limit:
+					print(f'Person is too big to process. {ratio} >= {large_person_area_limit}.')
+					continue
 
-			scale = upscale_ratio
-			w, h = utils.fix_size_by_scale(cropped.width, cropped.height, scale)
-			print(f'Trying x{scale} ({cropped.width},{cropped.height}) -> ({w},{h})')
-			if scale > 1 and block_overscaled_image:
-				area_scaled = w * h
-				if area_scaled > area_image:
-					print(f'It is too large to process.')
-					if not auto_upscale:
-						continue
-					print('AREA', area_image, (cropped.width * cropped.height))
-					scale = math.sqrt(area_image / (cropped.width * cropped.height))
-					w, h = utils.fix_size_by_scale(cropped.width, cropped.height, scale)
-					print(f'Auto Scale x{scale} ({cropped.width},{cropped.height}) -> ({w},{h})')
-					if scale < 1.2:
-						print(f'Scale {scale} has no effect. skip!!!!!')
-						continue
+				block_overscaled_image = True
+				auto_upscale = True
 
-			print(f'Scale {scale}')
-			mask = sam.sam_predict_box(image, box).convert('L')
+				scale = upscale_ratio
+				w, h = utils.fix_size_by_scale(cropped.width, cropped.height, scale)
+				print(f'Trying x{scale} ({cropped.width},{cropped.height}) -> ({w},{h})')
+				if scale > 1 and block_overscaled_image:
+					area_scaled = w * h
+					if area_scaled > area_image:
+						print(f'It is too large to process.')
+						if not auto_upscale:
+							continue
+						print('AREA', area_image, (cropped.width * cropped.height))
+						scale = math.sqrt(area_image / (cropped.width * cropped.height))
+						w, h = utils.fix_size_by_scale(cropped.width, cropped.height, scale)
+						print(f'Auto Scale x{scale} ({cropped.width},{cropped.height}) -> ({w},{h})')
+						if scale < 1.2:
+							print(f'Scale {scale} has no effect. skip!!!!!')
+							continue
 
-			enlarged = cropped.resize((w, h), Image.Resampling.LANCZOS)
-			processed = self.process_img2img(enlarged, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
-			processed = processed.resize(cropped.size, Image.Resampling.LANCZOS)
+				print(f'Scale {scale}')
+				mask = sam.sam_predict_box(image, box).convert('L')
 
-			cropped_mask = mask.crop((x1, y1, x2, y2))
-			blur = ImageFilter.GaussianBlur(4)
-			blur_mask = cropped_mask.filter(blur)
+				enlarged = cropped.resize((w, h), Image.Resampling.LANCZOS)
+				processed = self.process_img2img(enlarged, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+				processed = processed.resize(cropped.size, Image.Resampling.LANCZOS)
 
-			image.paste(processed, (x1, y1), mask=blur_mask)
+				cropped_mask = mask.crop((x1, y1, x2, y2))
+				blur = ImageFilter.GaussianBlur(4)
+				blur_mask = cropped_mask.filter(blur)
 
-		bind.pixels = utils.pil2tensor(image.convert('RGB'))
+				image.paste(processed, (x1, y1), mask=blur_mask)
+				results.append(image)
+
+		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
 
 
@@ -280,59 +286,65 @@ class BMABSimpleHandDetailer(BMABDetailer):
 			return (bind, bind.pixels)
 
 		pixels = bind.pixels if image is None else image
-		bgimg = utils.tensor2pil(pixels)
-		bounding_box = bgimg.convert('RGB').copy()
-		bonding_dr = ImageDraw.Draw(bounding_box)
 
-		if bind.context is not None:
-			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+		results = []
+		bbox_results = []
+		for bgimg in utils.get_pils_from_pixels(pixels):
 
-		if lora is not None:
-			for l in lora.loras:
-				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
+			bounding_box = bgimg.convert('RGB').copy()
+			bonding_dr = ImageDraw.Draw(bounding_box)
 
-		boxes, logits, phrases = grdino.dino_predict(bgimg, 'hand', 0.35, 0.25)
-		print(phrases)
-		for idx, (box, logit, phrase) in enumerate(zip(boxes, logits, phrases)):
-			print(phrase)
-			if phrase != 'hand':
-				continue
+			if bind.context is not None:
+				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
-			x1, y1, x2, y2 = tuple(int(x) for x in box)
-			print('HAND', idx, (x1, y1, x2, y2))
-			bonding_dr.rectangle((x1, y1, x2, y2), outline=(255, 0, 0), width=2)
+			if lora is not None:
+				for l in lora.loras:
+					bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
-			x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
-			cbx = x1 - padding, y1 - padding, x2 + padding, y2 + padding
-			cropped = bgimg.crop(cbx)
-			resized = utils.resize_and_fill(cropped, width, height)
-			face = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+			boxes, logits, phrases = grdino.dino_predict(bgimg, 'hand', 0.35, 0.25)
+			for idx, (box, logit, phrase) in enumerate(zip(boxes, logits, phrases)):
+				print(phrase)
+				if phrase != 'hand':
+					continue
 
-			iratio = width / height
-			cratio = cropped.width / cropped.height
-			if iratio < cratio:
-				ratio = cropped.width / width
-				face = face.resize((int(face.width * ratio), int(face.height * ratio)))
-				y0 = (face.height - cropped.height) // 2
-				face = face.crop((0, y0, cropped.width, y0 + cropped.height))
-			else:
-				ratio = cropped.height / height
-				face = face.resize((int(face.width * ratio), int(face.height * ratio)))
-				x0 = (face.width - cropped.width) // 2
-				face = face.crop((x0, 0, x0 + cropped.width, cropped.height))
+				x1, y1, x2, y2 = tuple(int(x) for x in box)
+				print('HAND', idx, (x1, y1, x2, y2))
+				bonding_dr.rectangle((x1, y1, x2, y2), outline=(255, 0, 0), width=2)
 
-			mask = Image.new('L', bgimg.size, 0)
-			dr = ImageDraw.Draw(mask, 'L')
-			dr.rectangle((x1, y1, x2, y2), fill=255)
-			blur = ImageFilter.GaussianBlur(4)
-			mask = mask.filter(blur)
+				x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
+				cbx = x1 - padding, y1 - padding, x2 + padding, y2 + padding
+				cropped = bgimg.crop(cbx)
+				resized = utils.resize_and_fill(cropped, width, height)
+				face = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
 
-			img = bgimg.copy()
-			img.paste(face, (cbx[0], cbx[1]))
-			bgimg.paste(img, (0, 0), mask=mask)
+				iratio = width / height
+				cratio = cropped.width / cropped.height
+				if iratio < cratio:
+					ratio = cropped.width / width
+					face = face.resize((int(face.width * ratio), int(face.height * ratio)))
+					y0 = (face.height - cropped.height) // 2
+					face = face.crop((0, y0, cropped.width, y0 + cropped.height))
+				else:
+					ratio = cropped.height / height
+					face = face.resize((int(face.width * ratio), int(face.height * ratio)))
+					x0 = (face.width - cropped.width) // 2
+					face = face.crop((x0, 0, x0 + cropped.width, cropped.height))
 
-		bind.pixels = utils.pil2tensor(bgimg.convert('RGB'))
-		bounding_box = utils.pil2tensor(bounding_box.convert('RGB'))
+				mask = Image.new('L', bgimg.size, 0)
+				dr = ImageDraw.Draw(mask, 'L')
+				dr.rectangle((x1, y1, x2, y2), fill=255)
+				blur = ImageFilter.GaussianBlur(4)
+				mask = mask.filter(blur)
+
+				img = bgimg.copy()
+				img.paste(face, (cbx[0], cbx[1]))
+				bgimg.paste(img, (0, 0), mask=mask)
+
+			results.append(bgimg.convert('RGB'))
+			bbox_results.append(bounding_box.convert('RGB'))
+
+		bind.pixels = utils.get_pixels_from_pils(results)
+		bounding_box = utils.get_pixels_from_pils(bbox_results)
 		return (bind, bind.pixels, bounding_box)
 
 
@@ -545,60 +557,63 @@ class BMABSubframeHandDetailer(BMABDetailer):
 			return (bind, bind.pixels)
 
 		pixels = bind.pixels if image is None else image
-		bgimg = utils.tensor2pil(pixels)
-		bounding_box = bgimg.convert('RGB').copy()
-		bonding_dr = ImageDraw.Draw(bounding_box)
 
-		if bind.context is not None:
-			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+		results = []
+		bbox_results = []
+		for bgimg in utils.get_pils_from_pixels(pixels):
 
-		boxes, masks = self.get_subframe(bgimg, 0, box_threshold=0.35)
-		if not boxes:
-			bounding_box = utils.pil2tensor(bounding_box.convert('RGB'))
-			return (bind, bind.pixels, bounding_box)
+			bounding_box = bgimg.convert('RGB').copy()
+			bonding_dr = ImageDraw.Draw(bounding_box)
 
-		if lora is not None:
-			for l in lora.loras:
-				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
+			if bind.context is not None:
+				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
-		for box, mask in zip(boxes, masks):
-			box = utils.fix_box_by_scale(box, 0)
-			box = utils.fix_box_size(box)
-			box = utils.fix_box_limit(box, bgimg.size)
-			x1, y1, x2, y2 = box
+			boxes, masks = self.get_subframe(bgimg, 0, box_threshold=0.35)
+			if len(boxes) > 0:
+				if lora is not None:
+					for l in lora.loras:
+						bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
-			x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
+				for box, mask in zip(boxes, masks):
+					box = utils.fix_box_by_scale(box, 0)
+					box = utils.fix_box_size(box)
+					box = utils.fix_box_limit(box, bgimg.size)
+					x1, y1, x2, y2 = box
 
-			bonding_dr.rectangle((x1, y1, x2, y2), outline=(0, 255, 0), width=2)
+					x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
 
-			cbx = x1 - padding, y1 - padding, x2 + padding, y2 + padding
+					bonding_dr.rectangle((x1, y1, x2, y2), outline=(0, 255, 0), width=2)
 
-			cropped = bgimg.crop(cbx)
-			resized = utils.resize_and_fill(cropped, width, height)
-			subframe = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+					cbx = x1 - padding, y1 - padding, x2 + padding, y2 + padding
 
-			iratio = width / height
-			cratio = cropped.width / cropped.height
-			if iratio < cratio:
-				ratio = cropped.width / width
-				subframe = subframe.resize((int(subframe.width * ratio), int(subframe.height * ratio)))
-				y0 = (subframe.height - cropped.height) // 2
-				subframe = subframe.crop((0, y0, cropped.width, y0 + cropped.height))
-			else:
-				ratio = cropped.height / height
-				subframe = subframe.resize((int(subframe.width * ratio), int(subframe.height * ratio)))
-				x0 = (subframe.width - cropped.width) // 2
-				subframe = subframe.crop((x0, 0, x0 + cropped.width, cropped.height))
+					cropped = bgimg.crop(cbx)
+					resized = utils.resize_and_fill(cropped, width, height)
+					subframe = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
 
-			blur = ImageFilter.GaussianBlur(4)
-			mask = mask.filter(blur)
+					iratio = width / height
+					cratio = cropped.width / cropped.height
+					if iratio < cratio:
+						ratio = cropped.width / width
+						subframe = subframe.resize((int(subframe.width * ratio), int(subframe.height * ratio)))
+						y0 = (subframe.height - cropped.height) // 2
+						subframe = subframe.crop((0, y0, cropped.width, y0 + cropped.height))
+					else:
+						ratio = cropped.height / height
+						subframe = subframe.resize((int(subframe.width * ratio), int(subframe.height * ratio)))
+						x0 = (subframe.width - cropped.width) // 2
+						subframe = subframe.crop((x0, 0, x0 + cropped.width, cropped.height))
 
-			img = bgimg.copy()
-			img.paste(subframe, (cbx[0], cbx[1]))
-			bgimg.paste(img, (0, 0), mask=mask)
+					blur = ImageFilter.GaussianBlur(4)
+					mask = mask.filter(blur)
 
-		bind.pixels = utils.pil2tensor(bgimg.convert('RGB'))
-		bounding_box = utils.pil2tensor(bounding_box.convert('RGB'))
+					img = bgimg.copy()
+					img.paste(subframe, (cbx[0], cbx[1]))
+					bgimg.paste(img, (0, 0), mask=mask)
+			results.append(bgimg)
+			bbox_results.append(bounding_box)
+
+		bind.pixels = utils.get_pixels_from_pils(results)
+		bounding_box = utils.get_pixels_from_pils(bbox_results)
 		return (bind, bind.pixels, bounding_box)
 
 
@@ -643,7 +658,6 @@ class BMABDetailAnything(BMABDetailer):
 
 	def process(self, bind: BMABBind, masks, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, limit, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
-		image = utils.tensor2pil(pixels)
 
 		if bind.context is not None:
 			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
@@ -652,52 +666,49 @@ class BMABDetailAnything(BMABDetailer):
 			for l in lora.loras:
 				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
-		boxes, confs = yolo.predict(image, 'person_yolov8m-seg.pt', 0.35)
-		if len(boxes) == 0:
-			bind.pixels = pixels
-			return (bind, bind.pixels, )
+		images = utils.get_pils_from_pixels(pixels)
 
-		if len(masks.shape) == 2:
-			masks = [masks]
+		results = []
+		for image, _masks in zip(images, masks):
+			for (idx, m) in enumerate(_masks):
+				i = 255. * m.cpu().numpy().squeeze()
+				pil_mask = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+				box = pil_mask.getbbox()
+				x1, y1, x2, y2 = tuple(int(x) for x in box)
 
-		for (idx, m) in enumerate(masks):
-			i = 255. * m.cpu().numpy().squeeze()
-			pil_mask = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-			box = pil_mask.getbbox()
-			x1, y1, x2, y2 = tuple(int(x) for x in box)
+				if limit != 0 and idx >= limit:
+					break
 
-			if limit != 0 and idx >= limit:
-				break
+				cbx = utils.get_box_with_padding(image, (x1, y1, x2, y2), padding)
+				cropped = image.crop(cbx)
+				resized = utils.resize_and_fill(cropped, width, height)
+				processed = self.process_img2img(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+				processed = self.apply_color_correction(resized, processed)
 
-			cbx = utils.get_box_with_padding(image, (x1, y1, x2, y2), padding)
-			cropped = image.crop(cbx)
-			resized = utils.resize_and_fill(cropped, width, height)
-			processed = self.process_img2img(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
-			processed = self.apply_color_correction(resized, processed)
+				iratio = width / height
+				cratio = cropped.width / cropped.height
+				if iratio < cratio:
+					ratio = cropped.width / width
+					processed = processed.resize((int(processed.width * ratio), int(processed.height * ratio)))
+					y0 = (processed.height - cropped.height) // 2
+					processed = processed.crop((0, y0, cropped.width, y0 + cropped.height))
+				else:
+					ratio = cropped.height / height
+					processed = processed.resize((int(processed.width * ratio), int(processed.height * ratio)))
+					x0 = (processed.width - cropped.width) // 2
+					processed = processed.crop((x0, 0, x0 + cropped.width, cropped.height))
 
-			iratio = width / height
-			cratio = cropped.width / cropped.height
-			if iratio < cratio:
-				ratio = cropped.width / width
-				processed = processed.resize((int(processed.width * ratio), int(processed.height * ratio)))
-				y0 = (processed.height - cropped.height) // 2
-				processed = processed.crop((0, y0, cropped.width, y0 + cropped.height))
-			else:
-				ratio = cropped.height / height
-				processed = processed.resize((int(processed.width * ratio), int(processed.height * ratio)))
-				x0 = (processed.width - cropped.width) // 2
-				processed = processed.crop((x0, 0, x0 + cropped.width, cropped.height))
+				img = image.copy()
+				img.paste(processed, (cbx[0], cbx[1]))
 
-			img = image.copy()
-			img.paste(processed, (cbx[0], cbx[1]))
+				pil_mask = utils.dilate_mask(pil_mask, dilation)
+				blur = ImageFilter.GaussianBlur(dilation)
+				blur_mask = pil_mask.filter(blur)
 
-			pil_mask = pil_mask.filter(ImageFilter.MaxFilter(dilation))
-			blur = ImageFilter.GaussianBlur(dilation)
-			blur_mask = pil_mask.filter(blur)
+				image.paste(img, (0, 0), mask=blur_mask)
+				results.append(image)
 
-			image.paste(img, (0, 0), mask=blur_mask)
-
-		bind.pixels = utils.pil2tensor(image.convert('RGB'))
+		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
 
 

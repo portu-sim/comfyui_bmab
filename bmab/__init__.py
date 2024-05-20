@@ -19,6 +19,7 @@ NODE_CLASS_MAPPINGS = {
     'BMAB SeedGenerator': nodes.BMABSeedGenerator,
     'BMAB KSampler': nodes.BMABKSampler,
     'BMAB KSamplerHiresFix': nodes.BMABKSamplerHiresFix,
+    'BMAB KSamplerHiresFixWithUpscaler': nodes.BMABKSamplerHiresFixWithUpscaler,
     'BMAB Context': nodes.BMABContextNode,
 
     # Detailer
@@ -51,6 +52,10 @@ NODE_CLASS_MAPPINGS = {
     'BMAB SD-WebUI API T2I Hires.Fix': nodes.BMABApiSDWebUIT2IHiresFix,
     'BMAB SD-WebUI API BMAB Extension': nodes.BMABApiSDWebUIBMABExtension,
     'BMAB SD-WebUI API ControlNet': nodes.BMABApiSDWebUIControlNet,
+
+    # UTIL Nodes
+    'BMAB Model To Bind': nodes.BMABModelToBind,
+    'BMAB Conditioning To Bind': nodes.BMABConditioningToBind,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -71,6 +76,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Integrator': 'BMAB Integrator',
     'BMAB KSampler': 'BMAB KSampler',
     'BMAB KSamplerHiresFix': 'BMAB KSampler Hires. Fix',
+    'BMAB KSamplerHiresFixWithUpscaler': 'BMAB KSampler Hires. Fix With Upscaler',
     'BMAB Extractor': 'BMAB Extractor',
     'BMAB SeedGenerator': 'BMAB Seed Generator',
     'BMAB Context': 'BMAB Context',
@@ -105,5 +111,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB SD-WebUI API T2I Hires.Fix': 'BMAB SD-WebUI API T2I Hires.Fix',
     'BMAB SD-WebUI API BMAB Extension': 'BMAB SD-WebUI API BMAB Extension',
     'BMAB SD-WebUI API ControlNet': 'BMAB SD-WebUI API ControlNet',
+
+    # UTIL Nodes
+    'BMAB Model To Bind': 'BMAB Model To Bind',
+    'BMAB Conditioning To Bind': 'BMAB Conditioning To Bind',
 }
 

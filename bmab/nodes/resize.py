@@ -72,48 +72,53 @@ class BMABResizeByPerson:
 	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, method, alignment, ratio, dilation, image=None):
 		pixels = bind.pixels if image is None else image
 
-		image = utils.tensor2pil(pixels)
+		results = []
+		for image in utils.get_pils_from_pixels(pixels):
 
-		if bind.context is not None:
-			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+			if bind.context is not None:
+				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
-		boxes, confs = predict(image, 'person_yolov8m-seg.pt', 0.35)
-		if len(boxes) == 0:
-			return (bind, bind.pixels,)
+			boxes, confs = predict(image, 'person_yolov8m-seg.pt', 0.35)
+			if len(boxes) == 0:
+				results.append(image.convert('RGB'))
+				continue
 
-		largest = []
-		for idx, box in enumerate(boxes):
-			x1, y1, x2, y2 = box
-			largest.append(((y2 - y1), box))
-		largest = sorted(largest, key=lambda c: c[0], reverse=True)
+			largest = []
+			for idx, box in enumerate(boxes):
+				x1, y1, x2, y2 = box
+				largest.append(((y2 - y1), box))
+			largest = sorted(largest, key=lambda c: c[0], reverse=True)
 
-		x1, y1, x2, y2 = largest[0][1]
-		pratio = (y2 - y1) / image.height
-		if pratio > ratio:
-			image_ratio = pratio / ratio
-			if image_ratio < 1.0:
-				return (bind, bind.pixels,)
-		else:
-			return (bind, bind.pixels,)
+			x1, y1, x2, y2 = largest[0][1]
+			pratio = (y2 - y1) / image.height
+			if pratio > ratio:
+				image_ratio = pratio / ratio
+				if image_ratio < 1.0:
+					results.append(image.convert('RGB'))
+					continue
+			else:
+				results.append(image.convert('RGB'))
+				continue
 
-		stretching_image = utils.resize_image_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio))
-		if method == 'stretching':
-			bind.pixels = utils.pil2tensor(stretching_image.convert('RGB'))
-		elif method == 'inpaint':
-			mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio), dilation)
-			blur = ImageFilter.GaussianBlur(10)
-			blur_mask = mask.filter(blur)
-			blur_mask = ImageOps.invert(blur_mask)
-			temp = stretching_image.copy()
-			temp = temp.filter(blur)
-			temp.paste(stretching_image, (0, 0), mask=blur_mask)
-			image = self.process_img2img(temp, mask, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
-			bind.pixels = utils.pil2tensor(image.convert('RGB'))
-		elif method == 'inpaint+lama':
-			mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio), dilation)
-			lama = LamaInpainting()
-			stretching_image = lama(stretching_image, mask)
-			image = self.process_img2img(stretching_image, mask, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
-			bind.pixels = utils.pil2tensor(image.convert('RGB'))
+			stretching_image = utils.resize_image_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio))
+			if method == 'stretching':
+				results.append(stretching_image.convert('RGB'))
+			elif method == 'inpaint':
+				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio), dilation)
+				blur = ImageFilter.GaussianBlur(10)
+				blur_mask = mask.filter(blur)
+				blur_mask = ImageOps.invert(blur_mask)
+				temp = stretching_image.copy()
+				temp = temp.filter(blur)
+				temp.paste(stretching_image, (0, 0), mask=blur_mask)
+				image = self.process_img2img(temp, mask, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+				results.append(image.convert('RGB'))
+			elif method == 'inpaint+lama':
+				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio), dilation)
+				lama = LamaInpainting()
+				stretching_image = lama(stretching_image, mask)
+				image = self.process_img2img(stretching_image, mask, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+				results.append(image.convert('RGB'))
 
+		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels,)

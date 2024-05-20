@@ -31,29 +31,28 @@ class BMABDetectionCrop:
 	CATEGORY = 'BMAB/imaging'
 
 	def process(self, source, target, model, padding, dilation):
-		processed = utils.tensor2pil(source)
-		image = utils.tensor2pil(target)
+		results = []
+		for image, processed in zip(utils.get_pils_from_pixels(target), utils.get_pils_from_pixels(source)):
+			dup = image.copy()
+			boxes, confs = yolo.predict(processed, model, 0.35)
+			for box in boxes:
+				x1, y1, x2, y2 = tuple(int(x) for x in box)
+				x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
 
-		dup = image.copy()
-		boxes, confs = yolo.predict(processed, model, 0.35)
-		for box in boxes:
-			x1, y1, x2, y2 = tuple(int(x) for x in box)
-			x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
+				mask = Image.new('L', processed.size, 0)
+				dr = ImageDraw.Draw(mask, 'L')
+				dr.rectangle((x1, y1, x2, y2), fill=255)
 
-			mask = Image.new('L', processed.size, 0)
-			dr = ImageDraw.Draw(mask, 'L')
-			dr.rectangle((x1, y1, x2, y2), fill=255)
+				padding_box = x1 - padding, y1 - padding, x2 + padding, y2 + padding
+				cropped = processed.crop(padding_box)
+				dup.paste(cropped, (padding_box[0], padding_box[1]))
 
-			padding_box = x1 - padding, y1 - padding, x2 + padding, y2 + padding
-			cropped = processed.crop(padding_box)
-			dup.paste(cropped, (padding_box[0], padding_box[1]))
+				blur = ImageFilter.GaussianBlur(5)
+				mask = mask.filter(blur)
 
-			blur = ImageFilter.GaussianBlur(5)
-			mask = mask.filter(blur)
-
-			image.paste(dup, (0, 0), mask=mask)
-
-		pixels = utils.pil2tensor(image.convert('RGB'))
+				image.paste(dup, (0, 0), mask=mask)
+			results.append(image)
+		pixels = utils.pil2tensor(results)
 		return (pixels, )
 
 
@@ -74,7 +73,6 @@ class BMABRemoveBackground:
 	CATEGORY = 'BMAB/imaging'
 
 	def process(self, image):
-		image = utils.tensor2pil(image)
 
 		net = BriaRMBG()
 		device = utils.get_device()
@@ -82,29 +80,35 @@ class BMABRemoveBackground:
 		net.to(device)
 		net.eval()
 
-		model_input_size = [image.width, image.height]
-		orig_im = np.array(image)
-		orig_im_size = orig_im.shape[0:2]
-		img = preprocess_image(orig_im, model_input_size).to(device)
+		results = []
+		masks = []
+		for image in utils.get_pils_from_pixels(image):
+			model_input_size = [image.width, image.height]
+			orig_im = np.array(image)
+			orig_im_size = orig_im.shape[0:2]
+			img = preprocess_image(orig_im, model_input_size).to(device)
 
-		# inference
-		result = net(img)
+			# inference
+			result = net(img)
 
-		# post process
-		result_image = postprocess_image(result[0][0], orig_im_size)
+			# post process
+			result_image = postprocess_image(result[0][0], orig_im_size)
 
-		# save result
-		pil_im = Image.fromarray(result_image)
+			# save result
+			pil_im = Image.fromarray(result_image)
 
-		del net
-		del img
-		utils.torch_gc()
+			del net
+			del img
+			utils.torch_gc()
 
-		blank = Image.new('RGBA', image.size, 0)
-		blank.paste(image.convert('RGBA'), (0, 0), mask=pil_im)
+			blank = Image.new('RGBA', image.size, 0)
+			blank.paste(image.convert('RGBA'), (0, 0), mask=pil_im)
 
-		pixels = utils.pil2tensor(blank)
-		mask = utils.pil2tensor_mask(result_image)
+			results.append(blank)
+			masks.append(result_image)
+
+		pixels = utils.get_pixels_from_pils(results)
+		mask = utils.get_pixels_from_pils(masks)
 		return (pixels, mask, )
 
 
@@ -126,10 +130,10 @@ class BMABAlphaComposit:
 	CATEGORY = 'BMAB/imaging'
 
 	def process(self, image1, image2):
-		image1 = utils.tensor2pil(image1).convert('RGBA')
-		image2 = utils.tensor2pil(image2).convert('RGBA')
-		image3 = Image.alpha_composite(image1, image2)
-		pixels = utils.pil2tensor(image3)
+		results = []
+		for image1, image2 in zip(utils.get_pils_from_pixels(image1), utils.get_pils_from_pixels(image2)):
+			results.append(Image.alpha_composite(image1.convert('RGBA'), image2.convert('RGBA')))
+		pixels = utils.get_pixels_from_pils(results)
 		return (pixels, )
 
 
@@ -152,11 +156,11 @@ class BMABBlend:
 	CATEGORY = 'BMAB/imaging'
 
 	def process(self, image1, image2, alpha):
-		image1 = utils.tensor2pil(image1).convert('RGBA')
-		image2 = utils.tensor2pil(image2).convert('RGBA')
-		image3 = Image.blend(image1, image2, alpha=alpha)
-		pixels = utils.pil2tensor(image3)
-		return (pixels, )
+		results = []
+		for image1, image2 in zip(utils.get_pils_from_pixels(image1), utils.get_pils_from_pixels(image2)):
+			results.append(Image.blend(image1.convert('RGBA'), image2.convert('RGBA'), alpha=alpha))
+		pixels = utils.get_pixels_from_pils(results)
+		return (pixels,)
 
 
 class BMABDetectAndMask:
@@ -177,18 +181,19 @@ class BMABDetectAndMask:
 	CATEGORY = 'BMAB/imaging'
 
 	def process(self, image, model, dilation):
-		image = utils.tensor2pil(image)
-
-		mask = Image.new('L', image.size, 0)
-		dr = ImageDraw.Draw(mask, 'L')
-
-		boxes, confs = yolo.predict(image, model, 0.35)
-		for box in boxes:
-			x1, y1, x2, y2 = tuple(int(x) for x in box)
-			x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
-			dr.rectangle((x1, y1, x2, y2), fill=255)
-		pixels = utils.pil2tensor_mask(mask).unsqueeze(0)
-		return (pixels, )
+		results = []
+		for pil_img in utils.get_pils_from_pixels(image):
+			masks = []
+			boxes, confs = yolo.predict(pil_img, model, 0.35)
+			for box in boxes:
+				mask = Image.new('L', pil_img.size, 0)
+				dr = ImageDraw.Draw(mask, 'L')
+				x1, y1, x2, y2 = tuple(int(x) for x in box)
+				x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
+				dr.rectangle((x1, y1, x2, y2), fill=255)
+				masks.append(mask)
+			results.append(utils.get_pixels_from_pils(masks))
+		return (results, )
 
 
 class BMABLamaInpaint:
@@ -197,7 +202,7 @@ class BMABLamaInpaint:
 		return {
 			'required': {
 				'image': ('IMAGE',),
-				'mask': ('MASK',),
+				'masks': ('MASK',),
 				'device': (('gpu', 'cpu'),),
 			}
 		}
@@ -208,11 +213,14 @@ class BMABLamaInpaint:
 
 	CATEGORY = 'BMAB/imaging'
 
-	def process(self, image, mask, device):
-		image = utils.tensor2pil(image)
-		mask = utils.tensor2pil(mask)
-		image = lama_inpainting(image, mask, device)
-		pixels = utils.pil2tensor(image)
+	def process(self, image, masks, device):
+		results = []
+		for image, _masks in zip(utils.get_pils_from_pixels(image), masks):
+			mask = Image.new('L', image.size, 0)
+			for m in utils.get_pils_from_pixels(_masks):
+				mask.paste(m, (0, 0), mask=m)
+			results.append(lama_inpainting(image, mask, device).convert('RGB'))
+		pixels = utils.get_pixels_from_pils(results)
 		return (pixels, )
 
 
@@ -241,16 +249,18 @@ class BMABDetector:
 	CATEGORY = 'BMAB/imaging'
 
 	def process(self, image, model):
-		pil_img = utils.tensor2pil(image)
-		masks = []
-		boxes, confs = yolo.predict(pil_img, model, 0.35)
-		for box in boxes:
-			mask = Image.new('L', pil_img.size, 0)
-			dr = ImageDraw.Draw(mask, 'L')
-			x1, y1, x2, y2 = tuple(int(x) for x in box)
-			dr.rectangle((x1, y1, x2, y2), fill=255)
-			masks.append(np.array(mask).astype(np.float32) / 255.0)
-		return (torch.from_numpy(np.array(masks)), )
+		results = []
+		for pil_img in utils.get_pils_from_pixels(image):
+			masks = []
+			boxes, confs = yolo.predict(pil_img, model, 0.35)
+			for box in boxes:
+				mask = Image.new('L', pil_img.size, 0)
+				dr = ImageDraw.Draw(mask, 'L')
+				x1, y1, x2, y2 = tuple(int(x) for x in box)
+				dr.rectangle((x1, y1, x2, y2), fill=255)
+				masks.append(mask)
+			results.append(utils.get_pixels_from_pils(masks))
+		return (results, )
 
 
 class BMABSegmentAnything:
@@ -274,16 +284,16 @@ class BMABSegmentAnything:
 	CATEGORY = 'BMAB/imaging'
 
 	def process(self, image, model, masks=None):
-		pil_img = utils.tensor2pil(image)
-
 		results = []
-		for (batch_number, image) in enumerate(masks):
-			i = 255. * image.cpu().numpy().squeeze()
-			pil_mask = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-			box = pil_mask.getbbox()
-			mask = sam.get_array_predict_box(pil_img, box, model=model)
-			results.append(mask)
-		return (torch.from_numpy(np.array(results)), )
+		for pil_img, _masks in zip(utils.get_pils_from_pixels(image), masks):
+			mask_results = []
+			pil_masks = utils.get_pils_from_pixels(_masks)
+			for pil_mask in pil_masks:
+				box = pil_mask.getbbox()
+				mask = sam.sam_predict_box(pil_img, box, model=model)
+				mask_results.append(mask.convert('L'))
+			results.append(utils.get_pixels_from_pils(mask_results))
+		return (results, )
 
 
 class BMABMasksToImages:
@@ -301,10 +311,18 @@ class BMABMasksToImages:
 
 	CATEGORY = 'BMAB/imaging'
 
-
 	def mask_to_image(self, masks):
-		for (batch_number, mask) in enumerate(masks):
+		pils = []
+		for _masks in masks:
+			w, h = _masks.shape[-1], _masks.shape[-2]
+			mask = Image.new('L', (w, h), 0)
+			for pil_mask in utils.get_pils_from_pixels(_masks):
+				mask.paste(pil_mask, (0, 0), mask=pil_mask)
+			pils.append(mask)
+		masks = utils.get_pixels_from_pils(pils)
+		for mask in masks:
 			mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
 		return (masks, )
+
 
 

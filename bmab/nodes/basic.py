@@ -107,37 +107,39 @@ class BMABBasic:
 		else:
 			pixels = bind.pixels if image is None else image
 
-		bgimg = utils.tensor2pil(pixels)
+		results = []
+		for bgimg in utils.get_pils_from_pixels(pixels):
+			if contrast != 1:
+				enhancer = ImageEnhance.Contrast(bgimg)
+				bgimg = enhancer.enhance(contrast)
 
-		if contrast != 1:
-			enhancer = ImageEnhance.Contrast(bgimg)
-			bgimg = enhancer.enhance(contrast)
+			if brightness != 1:
+				enhancer = ImageEnhance.Brightness(bgimg)
+				bgimg = enhancer.enhance(brightness)
 
-		if brightness != 1:
-			enhancer = ImageEnhance.Brightness(bgimg)
-			bgimg = enhancer.enhance(brightness)
+			if sharpeness != 1:
+				enhancer = ImageEnhance.Sharpness(bgimg)
+				bgimg = enhancer.enhance(sharpeness)
 
-		if sharpeness != 1:
-			enhancer = ImageEnhance.Sharpness(bgimg)
-			bgimg = enhancer.enhance(sharpeness)
+			if color_saturation != 1:
+				enhancer = ImageEnhance.Color(bgimg)
+				bgimg = enhancer.enhance(color_saturation)
 
-		if color_saturation != 1:
-			enhancer = ImageEnhance.Color(bgimg)
-			bgimg = enhancer.enhance(color_saturation)
+			if color_temperature != 0:
+				temp = calc_color_temperature(6500 + color_temperature)
+				az = []
+				for d in bgimg.getdata():
+					az.append((int(d[0] * temp[0]), int(d[1] * temp[1]), int(d[2] * temp[2])))
+				bgimg = Image.new('RGB', bgimg.size)
+				bgimg.putdata(az)
 
-		if color_temperature != 0:
-			temp = calc_color_temperature(6500 + color_temperature)
-			az = []
-			for d in bgimg.getdata():
-				az.append((int(d[0] * temp[0]), int(d[1] * temp[1]), int(d[2] * temp[2])))
-			bgimg = Image.new('RGB', bgimg.size)
-			bgimg.putdata(az)
+			if noise_alpha != 0:
+				img_noise = utils.generate_noise(0, bgimg.width, bgimg.height)
+				bgimg = Image.blend(bgimg, img_noise, alpha=noise_alpha)
 
-		if noise_alpha != 0:
-			img_noise = utils.generate_noise(0, bgimg.width, bgimg.height)
-			bgimg = Image.blend(bgimg, img_noise, alpha=noise_alpha)
+			results.append(bgimg)
 
-		bind.pixels = utils.pil2tensor(bgimg.convert('RGB'))
+		bind.pixels = utils.pil2tensor(results)
 		return (bind, bind.pixels,)
 
 
@@ -160,10 +162,11 @@ class BMABEdge:
 	CATEGORY = 'BMAB/basic'
 
 	def process(self, pixels, threshold1, threshold2, strength, unique_id):
-		print(threshold1, threshold2, strength, unique_id)
-		bgimg = utils.tensor2pil(pixels)
-		bgimg = edge_flavor(bgimg, threshold1, threshold2, strength)
-		pixels = utils.pil2tensor(bgimg.convert('RGB'))
+		results = []
+		for bgimg in utils.get_pils_from_pixels(pixels):
+			bgimg = edge_flavor(bgimg, threshold1, threshold2, strength)
+			results.append(bgimg)
+		pixels = utils.pil2tensor(results)
 		return (pixels,)
 
 
