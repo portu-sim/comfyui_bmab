@@ -48,8 +48,9 @@ class ApiServer:
 		try:
 			self.update_all_info()
 		except:
-			print(f'An error occured in API server {self.ipaddr}:{self.port}')
-
+			# print(f'An error occured in API server {self.ipaddr}:{self.port}')
+			pass
+	
 	def update_all_info(self):
 		resources = [
 			'samplers',
