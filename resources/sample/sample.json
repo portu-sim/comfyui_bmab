@@ -1,60 +1,7 @@
 {
-  "last_node_id": 27,
-  "last_link_id": 43,
+  "last_node_id": 29,
+  "last_link_id": 46,
   "nodes": [
-    {
-      "id": 15,
-      "type": "BMAB Upscale With Model",
-      "pos": [
-        1205,
-        227
-      ],
-      "size": {
-        "0": 315,
-        "1": 150
-      },
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "bind",
-          "type": "BMAB bind",
-          "link": 16
-        },
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "BMAB bind",
-          "type": "BMAB bind",
-          "links": [
-            17
-          ],
-          "shape": 3,
-          "slot_index": 0
-        },
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "links": null,
-          "shape": 3
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "BMAB Upscale With Model"
-      },
-      "widgets_values": [
-        "4x-UltraSharp.pth",
-        2,
-        512,
-        512
-      ]
-    },
     {
       "id": 4,
       "type": "CheckpointLoaderSimple",
@@ -133,94 +80,6 @@
       ]
     },
     {
-      "id": 11,
-      "type": "BMAB KSampler",
-      "pos": [
-        840,
-        221
-      ],
-      "size": {
-        "0": 315,
-        "1": 174
-      },
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "bind",
-          "type": "BMAB bind",
-          "link": 37
-        },
-        {
-          "name": "lora",
-          "type": "BMAB lora",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "BMAB bind",
-          "type": "BMAB bind",
-          "links": [
-            16
-          ],
-          "shape": 3,
-          "slot_index": 0
-        },
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "links": null,
-          "shape": 3,
-          "slot_index": 1
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "BMAB KSampler"
-      },
-      "widgets_values": [
-        20,
-        8,
-        "Use same sampler",
-        "Use same scheduler",
-        1
-      ]
-    },
-    {
-      "id": 5,
-      "type": "EmptyLatentImage",
-      "pos": [
-        26,
-        687
-      ],
-      "size": {
-        "0": 315,
-        "1": 106
-      },
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            40
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "EmptyLatentImage"
-      },
-      "widgets_values": [
-        512,
-        768,
-        1
-      ]
-    },
-    {
       "id": 26,
       "type": "BMAB Context",
       "pos": [
@@ -232,7 +91,7 @@
         "1": 178
       },
       "flags": {},
-      "order": 3,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
@@ -256,7 +115,7 @@
         "Node name for S&R": "BMAB Context"
       },
       "widgets_values": [
-        631285544943867,
+        501253181764904,
         "randomize",
         20,
         8,
@@ -338,18 +197,106 @@
       ]
     },
     {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [
+        26,
+        687
+      ],
+      "size": {
+        "0": 315,
+        "1": 106
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            40
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        512,
+        768,
+        1
+      ]
+    },
+    {
+      "id": 11,
+      "type": "BMAB KSampler",
+      "pos": [
+        840,
+        221
+      ],
+      "size": {
+        "0": 315,
+        "1": 174
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "bind",
+          "type": "BMAB bind",
+          "link": 37
+        },
+        {
+          "name": "lora",
+          "type": "BMAB lora",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BMAB bind",
+          "type": "BMAB bind",
+          "links": [
+            45
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": null,
+          "shape": 3,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BMAB KSampler"
+      },
+      "widgets_values": [
+        20,
+        8,
+        "Use same sampler",
+        "Use same scheduler",
+        1
+      ]
+    },
+    {
       "id": 17,
       "type": "BMAB Save Image",
       "pos": [
-        2270,
-        231
+        1934,
+        221
       ],
       "size": {
         "0": 526.6683959960938,
         "1": 744.5535278320312
       },
       "flags": {},
-      "order": 9,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -371,24 +318,24 @@
       ]
     },
     {
-      "id": 12,
-      "type": "BMAB KSamplerHiresFix",
+      "id": 29,
+      "type": "BMAB KSamplerHiresFixWithUpscaler",
       "pos": [
-        1564,
-        228
+        1206,
+        221
       ],
       "size": {
         "0": 315,
-        "1": 194
+        "1": 290
       },
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
           "name": "bind",
           "type": "BMAB bind",
-          "link": 17
+          "link": 45
         },
         {
           "name": "image",
@@ -406,7 +353,7 @@
           "name": "BMAB bind",
           "type": "BMAB bind",
           "links": [
-            42
+            46
           ],
           "shape": 3,
           "slot_index": 0
@@ -414,41 +361,44 @@
         {
           "name": "image",
           "type": "IMAGE",
-          "links": [],
-          "shape": 3,
-          "slot_index": 1
+          "links": null,
+          "shape": 3
         }
       ],
       "properties": {
-        "Node name for S&R": "BMAB KSamplerHiresFix"
+        "Node name for S&R": "BMAB KSamplerHiresFixWithUpscaler"
       },
       "widgets_values": [
         20,
         7,
         "Use same sampler",
         "Use same scheduler",
-        0.45
+        0.45,
+        "LANCZOS",
+        2,
+        512,
+        512
       ]
     },
     {
       "id": 27,
       "type": "BMAB Face Detailer",
       "pos": [
-        1912,
-        229
+        1568,
+        219
       ],
       "size": {
         "0": 315,
         "1": 290
       },
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
           "name": "bind",
           "type": "BMAB bind",
-          "link": 42
+          "link": 46
         },
         {
           "name": "image",
@@ -486,7 +436,7 @@
         4,
         "Use same sampler",
         "Use same scheduler",
-        0.4,
+        0.45,
         32,
         4,
         512,
@@ -495,22 +445,6 @@
     }
   ],
   "links": [
-    [
-      16,
-      11,
-      0,
-      15,
-      0,
-      "BMAB bind"
-    ],
-    [
-      17,
-      15,
-      0,
-      12,
-      0,
-      "BMAB bind"
-    ],
     [
       34,
       4,
@@ -560,18 +494,26 @@
       "LATENT"
     ],
     [
-      42,
-      12,
-      0,
-      27,
-      0,
-      "BMAB bind"
-    ],
-    [
       43,
       27,
       0,
       17,
+      0,
+      "BMAB bind"
+    ],
+    [
+      45,
+      11,
+      0,
+      29,
+      0,
+      "BMAB bind"
+    ],
+    [
+      46,
+      29,
+      0,
+      27,
       0,
       "BMAB bind"
     ]
@@ -580,10 +522,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.5644739300537773,
+      "scale": 0.6830134553650709,
       "offset": [
-        412.4033543009864,
-        239.1621068176834
+        138.7066514884853,
+        67.04635823955786
       ]
     }
   },
