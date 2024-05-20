@@ -269,6 +269,8 @@ class BMABSimpleHandDetailer(BMABDetailer):
 			print('-'*30)
 			print('You should install GroudingDINO on your system.')
 			print('-'*30)
+			pixels = bind.pixels if image is None else image
+			bind.pixels = pixels
 			return (bind, bind.pixels)
 
 		pixels = bind.pixels if image is None else image
