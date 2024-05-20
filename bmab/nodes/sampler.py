@@ -3,8 +3,40 @@ import nodes
 import folder_paths
 from bmab import utils
 from bmab.nodes.binder import BMABBind
+from bmab.nodes.binder import BMABContext
 from bmab.nodes.binder import BMABLoraBind
 from bmab.external.advanced_clip import advanced_encode
+
+
+class BMABContextNode:
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'seed': ('INT', {'default': 0, 'min': 0, 'max': 0xffffffffffffffff}),
+				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+			},
+			'optional': {
+				'seed_in': ('SEED',),
+			}
+		}
+
+	RETURN_TYPES = ('CONTEXT', )
+	RETURN_NAMES = ('BMAB context', )
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/sampler'
+
+	def process(self, *args, seed_in=None):
+		seed, steps, cfg_scale, sampler_name, scheduler = args
+		if seed_in is not None:
+			seed = seed_in
+		context = BMABContext(seed, steps, cfg_scale, sampler_name, scheduler)
+		return (context, )
 
 
 class BMABIntegrator:
@@ -15,7 +47,7 @@ class BMABIntegrator:
 				'model': ('MODEL',),
 				'clip': ('CLIP',),
 				'vae': ('VAE',),
-				'seed': ('INT', {'default': 0, 'min': 0, 'max': 0xffffffffffffffff}),
+				'context': ('CONTEXT',),
 				'stop_at_clip_layer': ('INT', {'default': -2, 'min': -24, 'max': -1, 'step': 1}),
 				'token_normalization': (['none', 'mean', 'length', 'length+mean'],),
 				'weight_interpretation': (['original', 'comfy', 'A1111', 'compel', 'comfy++', 'down_weight'],),
@@ -29,16 +61,21 @@ class BMABIntegrator:
 			}
 		}
 
-	RETURN_TYPES = ('BMAB bind', 'SEED')
-	RETURN_NAMES = ('BMAB bind', 'seed',)
+	RETURN_TYPES = ('BMAB bind', )
+	RETURN_NAMES = ('BMAB bind', )
 	FUNCTION = 'integrate_inputs'
 
 	CATEGORY = 'BMAB/sampler'
 
-	def integrate_inputs(self, model, clip, vae, seed, stop_at_clip_layer, token_normalization, weight_interpretation, prompt, negative_prompt, seed_in=None, latent=None, image=None, ):
+	def integrate_inputs(self, model, clip, vae, context: BMABContext, stop_at_clip_layer, token_normalization, weight_interpretation, prompt, negative_prompt, seed_in=None, latent=None, image=None):
+		if context is None and seed_in is None:
+			print('No SEED defined.')
+			raise ValueError('No SEED defined')
 
-		if seed_in is not None:
+		if context is None:
 			seed = seed_in
+		else:
+			seed = context.seed
 
 		prompt = utils.parse_prompt(prompt, seed)
 
@@ -57,7 +94,7 @@ class BMABIntegrator:
 
 		clip.clip_layer(stop_at_clip_layer)
 
-		return BMABBind(model, clip, vae, prompt, negative_prompt, positive, negative, latent, seed, image), seed
+		return BMABBind(model, clip, vae, prompt, negative_prompt, positive, negative, latent, context, image, seed),
 
 
 class BMABExtractor:
@@ -107,10 +144,10 @@ class BMABKSampler:
 		return {
 			'required': {
 				'bind': ('BMAB bind',),
-				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
-				'cfg': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 			},
 			'optional': {
@@ -131,12 +168,14 @@ class BMABKSampler:
 		model_lora, clip_lora = comfy.sd.load_lora_for_models(model, clip, lora, strength_model, strength_clip)
 		return (model_lora, clip_lora)
 
-	def sample(self, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise=1.0, lora: BMABLoraBind = None):
+	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise=1.0, lora: BMABLoraBind = None):
 		print('Sampler SEED', bind.seed, bind.model)
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 		if lora is not None:
 			for l in lora.loras:
 				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
-		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg, sampler_name, scheduler, bind.positive, bind.negative, bind.latent_image, denoise=denoise)[0]
+		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg_scale, sampler_name, scheduler, bind.positive, bind.negative, bind.latent_image, denoise=denoise)[0]
 		bind.pixels = bind.vae.decode(samples['samples'])
 		return bind, bind.pixels,
 
@@ -147,10 +186,10 @@ class BMABKSamplerHiresFix:
 		return {
 			'required': {
 				'bind': ('BMAB bind',),
-				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
-				'cfg': ('FLOAT', {'default': 4.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 0.4, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 			},
 			'optional': {
@@ -172,8 +211,10 @@ class BMABKSamplerHiresFix:
 		model_lora, clip_lora = comfy.sd.load_lora_for_models(model, clip, lora, strength_model, strength_clip)
 		return (model_lora, clip_lora)
 
-	def sample(self, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise=1.0, image=None, lora: BMABLoraBind = None):
+	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise=1.0, image=None, lora: BMABLoraBind = None):
 		pixels = bind.pixels if image is None else image
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 		print('Hires SEED', bind.seed, bind.model)
 		latent = dict(samples=bind.vae.encode(pixels))
 		if lora is not None:

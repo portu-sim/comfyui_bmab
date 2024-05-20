@@ -8,6 +8,7 @@ from .imaging import BMABDetectAndMask, BMABLamaInpaint, BMABDetector, BMABSegme
 from .loaders import BMABLoraLoader
 from .resize import BMABResizeByPerson
 from .sampler import BMABKSampler, BMABKSamplerHiresFix, BMABPrompt, BMABIntegrator, BMABSeedGenerator, BMABExtractor
+from .sampler import BMABContextNode
 from .upscaler import BMABUpscale, BMABUpscaleWithModel, BMABResizeAndFill
 from .toy import BMABGoogleGemini
 from .a1111api import BMABApiServer, BMABApiSDWebUIT2I, BMABApiSDWebUIT2IHiresFix, BMABApiSDWebUIControlNet

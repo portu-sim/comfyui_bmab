@@ -51,10 +51,10 @@ class BMABFaceDetailer(BMABDetailer):
 		return {
 			'required': {
 				'bind': ('BMAB bind',),
-				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
-				'cfg': ('FLOAT', {'default': 4.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 0.4, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
 				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
@@ -80,9 +80,12 @@ class BMABFaceDetailer(BMABDetailer):
 		latent = bind.vae.decode(samples["samples"])
 		return utils.tensor2pil(latent)
 
-	def process(self, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
 		bgimg = utils.tensor2pil(pixels)
+
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
 		if lora is not None:
 			for l in lora.loras:
@@ -95,7 +98,7 @@ class BMABFaceDetailer(BMABDetailer):
 			cbx = utils.get_box_with_padding(bgimg, (x1, y1, x2, y2), padding)
 			cropped = bgimg.crop(cbx)
 			resized = utils.resize_and_fill(cropped, width, height)
-			face = self.detailer(resized, bind, steps, cfg, sampler_name, scheduler, denoise)
+			face = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
 			face = self.apply_color_correction(resized, face)
 
 			iratio = width / height
@@ -131,10 +134,10 @@ class BMABPersonDetailer(BMABDetailer):
 		return {
 			'required': {
 				'bind': ('BMAB bind',),
-				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
-				'cfg': ('FLOAT', {'default': 4.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 0.4, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				'upscale_ratio': ('FLOAT', {'default': 4.0, 'min': 1.0, 'max': 8.0, 'step': 0.01}),
 				'dilation_mask': ('INT', {'default': 3, 'min': 3, 'max': 20, 'step': 1}),
@@ -161,9 +164,12 @@ class BMABPersonDetailer(BMABDetailer):
 		result = utils.tensor2pil(latent)
 		return result
 
-	def process(self, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise, upscale_ratio, dilation_mask, large_person_area_limit, limit, image=None, lora=None):
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, upscale_ratio, dilation_mask, large_person_area_limit, limit, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
 		image = utils.tensor2pil(pixels)
+
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
 		if lora is not None:
 			for l in lora.loras:
@@ -214,7 +220,7 @@ class BMABPersonDetailer(BMABDetailer):
 			mask = sam.sam_predict_box(image, box).convert('L')
 
 			enlarged = cropped.resize((w, h), Image.Resampling.LANCZOS)
-			processed = self.process_img2img(enlarged, bind, steps, cfg, sampler_name, scheduler, denoise)
+			processed = self.process_img2img(enlarged, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
 			processed = processed.resize(cropped.size, Image.Resampling.LANCZOS)
 
 			cropped_mask = mask.crop((x1, y1, x2, y2))
@@ -233,10 +239,10 @@ class BMABSimpleHandDetailer(BMABDetailer):
 		return {
 			'required': {
 				'bind': ('BMAB bind',),
-				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
-				'cfg': ('FLOAT', {'default': 4.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
 				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
@@ -262,7 +268,7 @@ class BMABSimpleHandDetailer(BMABDetailer):
 		latent = bind.vae.decode(samples["samples"])
 		return utils.tensor2pil(latent)
 
-	def process(self, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
 		try:
 			from bmab.utils import grdino
 		except:
@@ -277,6 +283,9 @@ class BMABSimpleHandDetailer(BMABDetailer):
 		bgimg = utils.tensor2pil(pixels)
 		bounding_box = bgimg.convert('RGB').copy()
 		bonding_dr = ImageDraw.Draw(bounding_box)
+
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
 		if lora is not None:
 			for l in lora.loras:
@@ -297,7 +306,7 @@ class BMABSimpleHandDetailer(BMABDetailer):
 			cbx = x1 - padding, y1 - padding, x2 + padding, y2 + padding
 			cropped = bgimg.crop(cbx)
 			resized = utils.resize_and_fill(cropped, width, height)
-			face = self.detailer(resized, bind, steps, cfg, sampler_name, scheduler, denoise)
+			face = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
 
 			iratio = width / height
 			cratio = cropped.width / cropped.height
@@ -333,10 +342,10 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		return {
 			'required': {
 				'bind': ('BMAB bind',),
-				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
-				'cfg': ('FLOAT', {'default': 4.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
 				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
@@ -526,7 +535,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		latent = bind.vae.decode(samples["samples"])
 		return utils.tensor2pil(latent)
 
-	def process(self, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
 		try:
 			from bmab.utils import grdino
 		except:
@@ -539,6 +548,9 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		bgimg = utils.tensor2pil(pixels)
 		bounding_box = bgimg.convert('RGB').copy()
 		bonding_dr = ImageDraw.Draw(bounding_box)
+
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
 		boxes, masks = self.get_subframe(bgimg, 0, box_threshold=0.35)
 		if not boxes:
@@ -563,7 +575,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 
 			cropped = bgimg.crop(cbx)
 			resized = utils.resize_and_fill(cropped, width, height)
-			subframe = self.detailer(resized, bind, steps, cfg, sampler_name, scheduler, denoise)
+			subframe = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
 
 			iratio = width / height
 			cratio = cropped.width / cropped.height
@@ -598,10 +610,10 @@ class BMABDetailAnything(BMABDetailer):
 			'required': {
 				'bind': ('BMAB bind',),
 				'masks': ('MASK',),
-				'steps': ('INT', {'default': 20, 'min': 1, 'max': 10000}),
-				'cfg': ('FLOAT', {'default': 4.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (comfy.samplers.KSampler.SCHEDULERS,),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 0.4, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
 				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
@@ -629,9 +641,12 @@ class BMABDetailAnything(BMABDetailer):
 		result = utils.tensor2pil(latent)
 		return result
 
-	def process(self, bind: BMABBind, masks, steps, cfg, sampler_name, scheduler, denoise, padding, dilation, width, height, limit, image=None, lora=None):
+	def process(self, bind: BMABBind, masks, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, limit, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
 		image = utils.tensor2pil(pixels)
+
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
 		if lora is not None:
 			for l in lora.loras:
@@ -657,7 +672,7 @@ class BMABDetailAnything(BMABDetailer):
 			cbx = utils.get_box_with_padding(image, (x1, y1, x2, y2), padding)
 			cropped = image.crop(cbx)
 			resized = utils.resize_and_fill(cropped, width, height)
-			processed = self.process_img2img(resized, bind, steps, cfg, sampler_name, scheduler, denoise)
+			processed = self.process_img2img(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
 			processed = self.apply_color_correction(resized, processed)
 
 			iratio = width / height

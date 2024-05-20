@@ -4,11 +4,6 @@ from bmab import nodes
 NODE_CLASS_MAPPINGS = {
     'BMAB Basic': nodes.BMABBasic,
     'BMAB Edge': nodes.BMABEdge,
-    'BMAB Integrator': nodes.BMABIntegrator,
-    'BMAB Extractor': nodes.BMABExtractor,
-    'BMAB SeedGenerator': nodes.BMABSeedGenerator,
-    'BMAB KSampler': nodes.BMABKSampler,
-    'BMAB KSamplerHiresFix': nodes.BMABKSamplerHiresFix,
     'BMAB Upscaler': nodes.BMABUpscale,
     'BMAB Resize By Person': nodes.BMABResizeByPerson,
     'BMAB Save Image': nodes.BMABSaveImage,
@@ -17,6 +12,14 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Prompt': nodes.BMABPrompt,
     'BMAB Resize and Fill': nodes.BMABResizeAndFill,
     'BMAB Google Gemini Prompt': nodes.BMABGoogleGemini,
+
+    # Sampler
+    'BMAB Integrator': nodes.BMABIntegrator,
+    'BMAB Extractor': nodes.BMABExtractor,
+    'BMAB SeedGenerator': nodes.BMABSeedGenerator,
+    'BMAB KSampler': nodes.BMABKSampler,
+    'BMAB KSamplerHiresFix': nodes.BMABKSamplerHiresFix,
+    'BMAB Context': nodes.BMABContextNode,
 
     # Detailer
     'BMAB Face Detailer': nodes.BMABFaceDetailer,
@@ -54,13 +57,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Basic': 'BMAB Basic',
     'BMAB Edge': 'BMAB Edge',
     'BMAB DinoSam': 'BMAB DinoSam',
-    'BMAB Integrator': 'BMAB Integrator',
-    'BMAB KSampler': 'BMAB KSampler',
-    'BMAB KSamplerHiresFix': 'BMAB KSampler Hires. Fix',
     'BMAB Upscaler': 'BMAB Upscaler',
     'BMAB Resize By Person': 'BMAB Resize By Person',
-    'Extractor': 'BMAB Extractor',
-    'SeedGenerator': 'BMAB Seed Generator',
     'BMAB Control Net': 'BMAB ControlNet',
     'BMAB Save Image': 'BMAB Save Image',
     'BMAB Upscale With Model': 'BMAB Upscale With Model',
@@ -68,6 +66,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Prompt': 'BMAB Prompt',
     'BMAB Resize and Fill': 'BMAB Resize And Fill',
     'BMAB Google Gemini Prompt': 'BMAB Google Gemini API',
+
+    # Sampler
+    'BMAB Integrator': 'BMAB Integrator',
+    'BMAB KSampler': 'BMAB KSampler',
+    'BMAB KSamplerHiresFix': 'BMAB KSampler Hires. Fix',
+    'BMAB Extractor': 'BMAB Extractor',
+    'BMAB SeedGenerator': 'BMAB Seed Generator',
+    'BMAB Context': 'BMAB Context',
 
     # Detailer
     'BMAB Face Detailer': 'BMAB Face Detailer',
