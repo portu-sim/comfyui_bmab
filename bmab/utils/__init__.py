@@ -6,7 +6,7 @@ import torch
 import numpy as np
 import glob
 import importlib.util
-from basicsr.utils.download_util import load_file_from_url
+from torch.hub import download_url_to_file, get_dir
 
 from PIL import Image
 from PIL import ImageDraw
@@ -29,6 +29,24 @@ def pil2tensor_mask(mask):
 
 def tensor2pil(image):
     return Image.fromarray(np.clip(255. * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8))
+
+
+def load_file_from_url(url, model_dir=None, progress=True, file_name=None):
+    if model_dir is None:
+        hub_dir = get_dir()
+        model_dir = os.path.join(hub_dir, 'checkpoints')
+
+    os.makedirs(model_dir, exist_ok=True)
+
+    parts = urlparse(url)
+    filename = os.path.basename(parts.path)
+    if file_name is not None:
+        filename = file_name
+    cached_file = os.path.abspath(os.path.join(model_dir, filename))
+    if not os.path.exists(cached_file):
+        print(f'Downloading: "{url}" to {cached_file}\n')
+        download_url_to_file(url, cached_file, hash_prefix=None, progress=progress)
+    return cached_file
 
 
 def lazy_loader(filename):
