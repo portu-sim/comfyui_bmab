@@ -139,8 +139,8 @@ class BMABBasic:
 
 			results.append(bgimg)
 
-		bind.pixels = utils.get_pixels_from_pils(results)
-		return (bind, bind.pixels,)
+		pixels = utils.get_pixels_from_pils(results)
+		return BMABBind.result(bind, pixels, )
 
 
 class BMABEdge:

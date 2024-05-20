@@ -61,7 +61,7 @@ class BMABResizeByPerson:
 		latent = dict(samples=bind.vae.encode(pixels))
 		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg, sampler_name, scheduler, bind.positive, bind.negative, latent, denoise=denoise)[0]
 		if mask is not None:
-			samples['noise_mask'] = utils.pil2tensor_mask(mask)
+			samples['noise_mask'] = utils.get_pixels_from_pils([mask])[0]
 		latent = bind.vae.decode(samples["samples"])
 		result = utils.tensor2pil(latent)
 		blur = ImageFilter.GaussianBlur(4)

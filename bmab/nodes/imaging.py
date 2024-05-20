@@ -158,7 +158,7 @@ class BMABBlend:
 	def process(self, image1, image2, alpha):
 		results = []
 		for image1, image2 in zip(utils.get_pils_from_pixels(image1), utils.get_pils_from_pixels(image2)):
-			results.append(Image.blend(image1.convert('RGBA'), image2.convert('RGBA'), alpha=alpha))
+			results.append(Image.blend(image1.convert('RGBA'), image2.convert('RGBA'), alpha=alpha).convert('RGB'))
 		pixels = utils.get_pixels_from_pils(results)
 		return (pixels,)
 
