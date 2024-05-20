@@ -31,8 +31,7 @@ class BMABContextNode:
 
 	CATEGORY = 'BMAB/sampler'
 
-	def process(self, *args, seed_in=None):
-		seed, steps, cfg_scale, sampler_name, scheduler = args
+	def process(self, seed, steps, cfg_scale, sampler_name, scheduler, seed_in=None):
 		if seed_in is not None:
 			seed = seed_in
 		context = BMABContext(seed, steps, cfg_scale, sampler_name, scheduler)
@@ -220,7 +219,7 @@ class BMABKSamplerHiresFix:
 		if lora is not None:
 			for l in lora.loras:
 				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
-		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg, sampler_name, scheduler, bind.positive, bind.negative, latent, denoise=denoise, force_full_denoise=True)[0]
+		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg_scale, sampler_name, scheduler, bind.positive, bind.negative, latent, denoise=denoise, force_full_denoise=True)[0]
 		bind.pixels = bind.vae.decode(samples['samples'])
 		return bind, bind.pixels,
 
