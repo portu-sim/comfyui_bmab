@@ -125,7 +125,7 @@ class BMABFaceDetailer(BMABDetailer):
 				img.paste(face, (cbx[0], cbx[1]))
 				bgimg.paste(img, (0, 0), mask=mask)
 
-				results.append(bgimg.convert('RGB'))
+			results.append(bgimg.convert('RGB'))
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
@@ -233,7 +233,7 @@ class BMABPersonDetailer(BMABDetailer):
 				blur_mask = cropped_mask.filter(blur)
 
 				image.paste(processed, (x1, y1), mask=blur_mask)
-				results.append(image)
+			results.append(image)
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
@@ -739,7 +739,7 @@ class BMABDetailAnything(BMABDetailer):
 				blur_mask = pil_mask.filter(blur)
 
 				image.paste(img, (0, 0), mask=blur_mask)
-				results.append(image)
+			results.append(image)
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
