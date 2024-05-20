@@ -87,7 +87,7 @@ class ApiServer:
 				j = json.load(f)
 				return j.get('upscaler_list', [])
 		except:
-			print(f'An error occured in API server.')
+			# print(f'An error occured in API server.')
 			return []
 
 	@classmethod
@@ -99,7 +99,7 @@ class ApiServer:
 				sampler.extend(j.get('sampler_list', []))
 				return sampler
 		except:
-			print(f'An error occured in API server.')
+			# print(f'An error occured in API server.')
 			return []
 
 	@classmethod
@@ -111,7 +111,7 @@ class ApiServer:
 				scheduler.extend(j.get('scheduler_list', []))
 				return scheduler
 		except:
-			print(f'An error occured in API server.')
+			# print(f'An error occured in API server.')
 			return []
 
 	@classmethod
@@ -123,7 +123,7 @@ class ApiServer:
 				checkpoints.extend(j.get('sd-model_list', []))
 				return checkpoints
 		except:
-			print(f'An error occured in API server.')
+			# print(f'An error occured in API server.')
 			return []
 
 	@classmethod
@@ -133,7 +133,7 @@ class ApiServer:
 				j = json.load(f)
 				return j.get('models', [])
 		except:
-			print(f'An error occured in API server.')
+			# print(f'An error occured in API server.')
 			return []
 
 	@classmethod
@@ -143,7 +143,7 @@ class ApiServer:
 				j = json.load(f)
 				return j.get('modules', [])
 		except:
-			print(f'An error occured in API server.')
+			# print(f'An error occured in API server.')
 			return []
 
 	def get_model(self):
