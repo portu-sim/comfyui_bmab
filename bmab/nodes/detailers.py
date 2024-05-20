@@ -242,22 +242,39 @@ class BMABPersonDetailer(BMABDetailer):
 class BMABSimpleHandDetailer(BMABDetailer):
 	@classmethod
 	def INPUT_TYPES(s):
+		try:
+			from bmab.utils import grdino
+			return {
+				'required': {
+					'bind': ('BMAB bind',),
+					'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+					'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+					'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+					'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
+					'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+					'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
+					'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
+					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+				},
+				'optional': {
+					'image': ('IMAGE',),
+					'lora': ('BMAB lora',)
+				}
+			}
+		except:
+			pass
+
 		return {
 			'required': {
-				'bind': ('BMAB bind',),
-				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
-				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
-				'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
-				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
-				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
-				'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-				'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-			},
-			'optional': {
-				'image': ('IMAGE',),
-				'lora': ('BMAB lora',)
+				'text': (
+					'STRING',
+					{
+						'default': 'Cannot Load GroundingDINO. To use this node, install GroudingDINO first.',
+						'multiline': True,
+						'dynamicPrompts': True
+					}
+				),
 			}
 		}
 
@@ -281,9 +298,7 @@ class BMABSimpleHandDetailer(BMABDetailer):
 			print('-'*30)
 			print('You should install GroudingDINO on your system.')
 			print('-'*30)
-			pixels = bind.pixels if image is None else image
-			bind.pixels = pixels
-			return (bind, bind.pixels)
+			raise
 
 		pixels = bind.pixels if image is None else image
 
@@ -351,24 +366,42 @@ class BMABSimpleHandDetailer(BMABDetailer):
 class BMABSubframeHandDetailer(BMABDetailer):
 	@classmethod
 	def INPUT_TYPES(s):
+		try:
+			from bmab.utils import grdino
+			return {
+				'required': {
+					'bind': ('BMAB bind',),
+					'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+					'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+					'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+					'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
+					'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+					'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
+					'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
+					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+				},
+				'optional': {
+					'image': ('IMAGE',),
+					'lora': ('BMAB lora',)
+				}
+			}
+		except:
+			pass
+
 		return {
 			'required': {
-				'bind': ('BMAB bind',),
-				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
-				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
-				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
-				'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
-				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
-				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
-				'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-				'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-			},
-			'optional': {
-				'image': ('IMAGE',),
-				'lora': ('BMAB lora',)
+				'text': (
+					'STRING',
+					{
+						'default': 'Cannot Load GroundingDINO. To use this node, install GroudingDINO first.',
+						'multiline': True,
+						'dynamicPrompts': True
+					}
+				),
 			}
 		}
+
 
 	RETURN_TYPES = ('BMAB bind', 'IMAGE', 'IMAGE')
 	RETURN_NAMES = ('BMAB bind', 'image', 'annotation')
@@ -554,7 +587,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 			print('-'*30)
 			print('You should install GroudingDINO on your system.')
 			print('-'*30)
-			return (bind, bind.pixels)
+			raise
 
 		pixels = bind.pixels if image is None else image
 
