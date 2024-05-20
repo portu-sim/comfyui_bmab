@@ -6,7 +6,6 @@ import torch
 import numpy as np
 import glob
 import importlib.util
-from color_matcher import ColorMatcher
 from basicsr.utils.download_util import load_file_from_url
 
 from PIL import Image
@@ -91,12 +90,6 @@ def torch_gc():
 def debug_save_image(img, name):
     bmab_model_path = os.path.join(os.path.dirname(__file__), f'../../{name}')
     img.save(bmab_model_path)
-
-
-def img2img_color_match(src, ref):
-    cm = ColorMatcher()
-    result = cm.transfer(np.array(src).astype(np.float32), np.array(ref).astype(np.float32), 'default')
-    return Image.fromarray(result.astype(np.uint8))
 
 
 def generate_noise(seed, width, height):
