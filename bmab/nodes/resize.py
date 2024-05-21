@@ -46,7 +46,7 @@ class BMABResizeByPerson:
 				'dilation': ('INT', {'default': 30, 'min': 4, 'max': 128, 'step': 1}),
 			},
 			'optional': {
-				'pixels': ('IMAGE',),
+				'image': ('IMAGE',),
 			}
 		}
 
