@@ -74,6 +74,15 @@ You can check versions in python
 >>>
 ```
 
+You install ComfyUI as Portable
+
+Windows, Pytorch 2.3, Cuda 12.1, Python 3.10
+```commandline
+python_embeded\Scripts\python.exe -m pip install https://github.com/Bing-su/GroundingDINO/releases/download/v24.5.19/groundingdino-24.5.19+torch2.3.0.cu121-cp310-cp310-win_amd64.whl
+```
+
+Other case.
+
 Windows, Pytorch 2.2, Cuda 12.1, Python 3.10
 
 ```commandline
