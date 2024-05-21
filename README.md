@@ -24,6 +24,9 @@ You will need to install a total of three custom nodes.
   * https://github.com/cubiq/ComfyUI_IPAdapter_plus.git
   * cubiq, Thanks for excellent code.
 
+And be sure to install <span style="color:red"> GroundingDINO </span>  at the bottom.
+
+
 ## Install Manually
 
 I can't describe about your python environment.
