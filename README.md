@@ -32,6 +32,33 @@ And be sure to install <span style="color:red"> GroundingDINO </span>  at the bo
 I can't describe about your python environment.
 I will write the installation instructions assuming you have some knowledge of Python.
 
+
+### Windows portable User
+
+```commandline
+cd ComfyUI/custom_nodes
+git clone https://github.com/portu-sim/comfyui_bmab.git
+cd comfyui_bmab
+python_embeded\python.exe -m pip install -r requirements.txt
+cd ..
+```
+
+You will need to install two additional custom nodes required by comfyui_bmab.
+
+```commandline
+cd ComfyUI/custom_nodes
+git clone https://github.com/Fannovel16/comfyui_controlnet_aux.git
+cd comfyui_controlnet_aux
+python_embeded\python.exe -r pip install requirements.txt
+cd ..
+git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git
+cd ComfyUI_IPAdapter_plus
+python_embeded\python.exe -m pip install -r requirements.txt
+cd ..
+```
+
+### Other python environment
+
 ```commandline
 cd ComfyUI/custom_nodes
 git clone https://github.com/portu-sim/comfyui_bmab.git
@@ -54,10 +81,17 @@ pip install -r requirements.txt
 cd ..
 ```
 
+
 ## Install GroundingDINO
 
 comfyui_bmab requires GroundingDINO for some detection processing.   
 However, this cannot be installed using pip, so follow the following procedure.
+
+### Windows - CompyUI Portable User
+
+```commandline
+python_embeded\python.exe -m pip install https://github.com/Bing-su/GroundingDINO/releases/download/v24.5.19/groundingdino-24.5.19+torch2.2.2.cu121-cp311-cp311-win_amd64.whl
+```
 
 ### Windows & Linux
 
@@ -77,14 +111,6 @@ You can check versions in python
 >>>
 ```
 
-You install ComfyUI as Portable
-
-Windows, Pytorch 2.3, Cuda 12.1, Python 3.10
-```commandline
-python_embeded\Scripts\python.exe -m pip install https://github.com/Bing-su/GroundingDINO/releases/download/v24.5.19/groundingdino-24.5.19+torch2.3.0.cu121-cp310-cp310-win_amd64.whl
-```
-
-Other case.
 
 Windows, Pytorch 2.2, Cuda 12.1, Python 3.10
 
