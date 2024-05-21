@@ -380,6 +380,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 					'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
 					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+					'squeeze': (('disable', 'enable'), ),
 				},
 				'optional': {
 					'image': ('IMAGE',),
@@ -443,13 +444,14 @@ class BMABSubframeHandDetailer(BMABDetailer):
 			x1, y1, x2, y2 = self.xyxy
 			return (x2 - x1) * (y2 - y1)
 
-		def put(self, mask):
+		def put(self, mask, bbox):
 			for xg in self.objects:
 				if not xg.is_valid():
 					continue
 				if xg.name == 'hand':
 					dr = ImageDraw.Draw(mask, 'L')
 					dr.rectangle(xg.xyxy, fill=255)
+					bbox.append(xg.xyxy)
 
 		def get_box(self):
 			if not self.objects:
@@ -564,14 +566,17 @@ class BMABSubframeHandDetailer(BMABDetailer):
 
 		boxes = []
 		masks = []
+		mask_bboxes = []
 		for person in people:
+			bboxes = []
 			if person.is_valid():
 				mask = Image.new('L', pilimg.size, color=0)
 				person.log()
-				person.put(mask)
+				person.put(mask, bboxes)
 				boxes.append(person.get_box())
 				masks.append(mask)
-		return boxes, masks
+			mask_bboxes.append(bboxes)
+		return boxes, masks, mask_bboxes
 
 	def detailer(self, pil_img, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise):
 		pixels = utils.pil2tensor(pil_img.convert('RGB'))
@@ -580,7 +585,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		latent = bind.vae.decode(samples["samples"])
 		return utils.tensor2pil(latent)
 
-	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, image=None, lora=None):
 		try:
 			from bmab.utils import grdino
 		except:
@@ -589,6 +594,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 			print('-'*30)
 			raise
 
+		squeeze = squeeze == 'enable'
 		pixels = bind.pixels if image is None else image
 
 		results = []
@@ -601,13 +607,24 @@ class BMABSubframeHandDetailer(BMABDetailer):
 			if bind.context is not None:
 				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
-			boxes, masks = self.get_subframe(bgimg, 0, box_threshold=0.35)
+			boxes, masks, bboxes = self.get_subframe(bgimg, 0, box_threshold=0.35)
 			if len(boxes) > 0:
 				if lora is not None:
 					for l in lora.loras:
 						bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
-				for box, mask in zip(boxes, masks):
+				for box, mask, mbox in zip(boxes, masks, bboxes):
+					cr = bgimg.crop(box)
+
+					if squeeze:
+						bx, _ = utils.yolo.predict(cr, 'person_yolov8m-seg.pt', 0.35)
+						if len(bx) > 0:
+							bs = bx[0]
+							x, y = box[0], box[1]
+							box = bs[0] + x, bs[1] + y, bs[2] + x, bs[3] + y
+							m = sam.sam_predict_box(bgimg, box).convert('L')
+							box = m.getbbox()
+
 					box = utils.fix_box_by_scale(box, 0)
 					box = utils.fix_box_size(box)
 					box = utils.fix_box_limit(box, bgimg.size)
@@ -615,9 +632,11 @@ class BMABSubframeHandDetailer(BMABDetailer):
 
 					x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
 
-					bonding_dr.rectangle((x1, y1, x2, y2), outline=(0, 255, 0), width=2)
-
 					cbx = x1 - padding, y1 - padding, x2 + padding, y2 + padding
+
+					bonding_dr.rectangle(cbx, outline=(0, 255, 0), width=2)
+					for hand_bbox in mbox:
+						bonding_dr.rectangle(hand_bbox, outline=(255, 0, 0), width=2)
 
 					cropped = bgimg.crop(cbx)
 					resized = utils.resize_and_fill(cropped, width, height)
@@ -743,6 +762,3 @@ class BMABDetailAnything(BMABDetailer):
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
-
-
-
