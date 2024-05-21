@@ -61,6 +61,19 @@ However, this cannot be installed using pip, so follow the following procedure.
 visit https://github.com/Bing-su/GroundingDINO/releases
 Copy link for suitable package URL.
 
+You can check versions in python
+
+```commandline
+>>>
+>>> import sys
+>>> sys.version
+'3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]'
+>>> import torch
+>>> torch.__version__
+'2.1.2+cu121'
+>>>
+```
+
 Windows, Pytorch 2.2, Cuda 12.1, Python 3.10
 
 ```commandline
