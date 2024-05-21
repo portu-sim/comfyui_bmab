@@ -67,6 +67,12 @@ Windows, Pytorch 2.2, Cuda 12.1, Python 3.10
 pip install https://github.com/Bing-su/GroundingDINO/releases/download/v24.5.19/groundingdino-24.5.19+torch2.2.2.cu121-cp310-cp310-win_amd64.whl
 ```
 
+Windows, Pytorch 2.3, Cuda 12.1, Python 3.10
+
+```commandline
+pip install https://github.com/Bing-su/GroundingDINO/releases/download/v24.5.19/groundingdino-24.5.19+torch2.3.0.cu121-cp310-cp310-win_amd64.whl
+```
+
 ### MacOS or Unknown
 
 The installation method below is most likely to work with the CPU. So it can be very slow.
