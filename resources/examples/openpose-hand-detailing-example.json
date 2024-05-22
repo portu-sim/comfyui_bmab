@@ -1,0 +1,481 @@
+{
+  "last_node_id": 33,
+  "last_link_id": 53,
+  "nodes": [
+    {
+      "id": 4,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        25,
+        217
+      ],
+      "size": {
+        "0": 315,
+        "1": 98
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            34
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            35
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "portu_429_lora2.fp16.safetensors"
+      ]
+    },
+    {
+      "id": 18,
+      "type": "VAELoader",
+      "pos": [
+        20,
+        356
+      ],
+      "size": {
+        "0": 315,
+        "1": 58
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            38
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "vae-ft-mse-840000-ema-pruned.ckpt"
+      ]
+    },
+    {
+      "id": 26,
+      "type": "BMAB Context",
+      "pos": [
+        24,
+        464
+      ],
+      "size": {
+        "0": 315,
+        "1": 178
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "seed_in",
+          "type": "SEED",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BMAB context",
+          "type": "CONTEXT",
+          "links": [
+            39
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BMAB Context"
+      },
+      "widgets_values": [
+        878953794515282,
+        "randomize",
+        20,
+        8,
+        "dpmpp_sde",
+        "karras"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [
+        26,
+        687
+      ],
+      "size": {
+        "0": 315,
+        "1": 106
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            40
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        512,
+        768,
+        1
+      ]
+    },
+    {
+      "id": 30,
+      "type": "BMAB Load Image",
+      "pos": [
+        407,
+        753
+      ],
+      "size": [
+        469.37541296463996,
+        746.2945929323166
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            47
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BMAB Load Image"
+      },
+      "widgets_values": [
+        "00009-3139289071.png",
+        "image"
+      ]
+    },
+    {
+      "id": 33,
+      "type": "PreviewImage",
+      "pos": [
+        1319,
+        750
+      ],
+      "size": [
+        537.1467559333894,
+        756.6380952760667
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 52
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 32,
+      "type": "PreviewImage",
+      "pos": [
+        1875,
+        753
+      ],
+      "size": [
+        562.8348297615144,
+        749.2057612916917
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 51
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 25,
+      "type": "BMAB Integrator",
+      "pos": [
+        407,
+        224
+      ],
+      "size": {
+        "0": 400,
+        "1": 318
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 34
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 35
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 38
+        },
+        {
+          "name": "context",
+          "type": "CONTEXT",
+          "link": 39
+        },
+        {
+          "name": "seed_in",
+          "type": "SEED",
+          "link": null
+        },
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "link": 40
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BMAB bind",
+          "type": "BMAB bind",
+          "links": [
+            53
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BMAB Integrator"
+      },
+      "widgets_values": [
+        -2,
+        "none",
+        "A1111",
+        "1girl, standing, full body, street, (detailed hand:1.4)",
+        "worst quality, low quality"
+      ]
+    },
+    {
+      "id": 31,
+      "type": "BMAB Openpose Hand Detailer",
+      "pos": [
+        968,
+        320
+      ],
+      "size": {
+        "0": 315,
+        "1": 314
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "bind",
+          "type": "BMAB bind",
+          "link": 53
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 47
+        },
+        {
+          "name": "lora",
+          "type": "BMAB lora",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BMAB bind",
+          "type": "BMAB bind",
+          "links": null,
+          "shape": 3
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            51
+          ],
+          "shape": 3,
+          "slot_index": 1
+        },
+        {
+          "name": "annotation",
+          "type": "IMAGE",
+          "links": [
+            52
+          ],
+          "shape": 3,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BMAB Openpose Hand Detailer"
+      },
+      "widgets_values": [
+        20,
+        7,
+        "Use same sampler",
+        "Use same scheduler",
+        0.45,
+        32,
+        4,
+        1024,
+        1024,
+        "disable"
+      ]
+    }
+  ],
+  "links": [
+    [
+      34,
+      4,
+      0,
+      25,
+      0,
+      "MODEL"
+    ],
+    [
+      35,
+      4,
+      1,
+      25,
+      1,
+      "CLIP"
+    ],
+    [
+      38,
+      18,
+      0,
+      25,
+      2,
+      "VAE"
+    ],
+    [
+      39,
+      26,
+      0,
+      25,
+      3,
+      "CONTEXT"
+    ],
+    [
+      40,
+      5,
+      0,
+      25,
+      5,
+      "LATENT"
+    ],
+    [
+      47,
+      30,
+      0,
+      31,
+      1,
+      "IMAGE"
+    ],
+    [
+      51,
+      31,
+      1,
+      32,
+      0,
+      "IMAGE"
+    ],
+    [
+      52,
+      31,
+      2,
+      33,
+      0,
+      "IMAGE"
+    ],
+    [
+      53,
+      25,
+      0,
+      31,
+      0,
+      "BMAB bind"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6830134553650707,
+      "offset": [
+        185.95766803736825,
+        -28.764659635582873
+      ]
+    }
+  },
+  "version": 0.4
+}

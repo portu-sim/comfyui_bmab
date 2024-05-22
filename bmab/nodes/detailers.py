@@ -70,7 +70,7 @@ class BMABFaceDetailer(BMABDetailer):
 		}
 
 	RETURN_TYPES = ('BMAB bind', 'IMAGE')
-	RETURN_NAMES = ('BMAB bind', 'image', )
+	RETURN_NAMES = ('BMAB bind', 'image',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/detailer'
@@ -156,7 +156,7 @@ class BMABPersonDetailer(BMABDetailer):
 		}
 
 	RETURN_TYPES = ('BMAB bind', 'IMAGE')
-	RETURN_NAMES = ('BMAB bind', 'image', )
+	RETURN_NAMES = ('BMAB bind', 'image',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/detailer'
@@ -185,7 +185,7 @@ class BMABPersonDetailer(BMABDetailer):
 			boxes, confs = yolo.predict(image, 'person_yolov8m-seg.pt', 0.35)
 			if len(boxes) == 0:
 				bind.pixels = pixels
-				return (bind, bind.pixels, )
+				return (bind, bind.pixels,)
 
 			for idx, (box, conf) in enumerate(zip(boxes, confs)):
 				x1, y1, x2, y2 = tuple(int(x) for x in box)
@@ -297,9 +297,9 @@ class BMABSimpleHandDetailer(BMABDetailer):
 		try:
 			from bmab.utils import grdino
 		except:
-			print('-'*30)
+			print('-' * 30)
 			print('You should install GroudingDINO on your system.')
-			print('-'*30)
+			print('-' * 30)
 			raise
 
 		pixels = bind.pixels if image is None else image
@@ -382,7 +382,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 					'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
 					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-					'squeeze': (('disable', 'enable'), ),
+					'squeeze': (('disable', 'enable'),),
 				},
 				'optional': {
 					'image': ('IMAGE',),
@@ -405,195 +405,89 @@ class BMABSubframeHandDetailer(BMABDetailer):
 			}
 		}
 
-
 	RETURN_TYPES = ('BMAB bind', 'IMAGE', 'IMAGE')
 	RETURN_NAMES = ('BMAB bind', 'image', 'annotation')
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/detailer'
 
-	class Obj(object):
-		name = None
+	def process_person(self, bind: BMABBind, bgimg: Image, person, person_hand, squeeze, img2img):
+		width, height, padding, dilation = img2img['width'], img2img['height'], img2img['padding'], img2img['dilation']
 
-		def __init__(self, xyxy) -> None:
-			super().__init__()
-			self.parent = None
-			self.xyxy = xyxy
-			self.objects = []
-			self.inbox = xyxy
+		x1, y1, x2, y2 = tuple(int(x) for x in person)
+		l_y = [hand[3] for hand in person_hand]
+		max_y = max(l_y)
+		box = (x1, y1, x2, max_y)
+		if max_y < y1:
+			return bgimg, (x1, y1, x2, y2)
 
-		def is_in(self, obj) -> bool:
-			x1, y1, x2, y2 = self.inbox
-			mx1, my1, mx2, my2 = obj.xyxy
+		if squeeze:
+			cr = bgimg.crop((x1, y1, x2, max_y))
+			bx, _ = utils.yolo.predict(cr, 'person_yolov8m-seg.pt', 0.35)
+			if len(bx) > 0:
+				bs = bx[0]
+				x, y = box[0], box[1]
+				box = bs[0] + x, bs[1] + y, bs[2] + x, bs[3] + y
+				m = sam.sam_predict_box(bgimg, box).convert('L')
+				box = m.getbbox()
 
-			x = int(x1 + (x2 - x1) / 2)
-			y = int(y1 + (y2 - y1) / 2)
+		cbx = utils.get_box_with_padding(bgimg, box, padding)
 
-			return mx1 <= x <= mx2 and my1 <= y <= my2
+		# Process Img2img
+		processed = process.process_img2img_with_mask(bind, bgimg.copy(), img2img, None, box=cbx)
 
-		def append(self, obj):
-			obj.parent = self
-			for ch in self.objects:
-				if obj.is_in(ch):
-					obj.parent = ch
-					break
-			self.objects.append(obj)
+		# Paste hand into org image
+		mask = Image.new('L', bgimg.size, 0)
+		dr = ImageDraw.Draw(mask, 'L')
+		for hand in person_hand:
+			dr.rectangle(hand, fill=255)
+		pil_mask = utils.dilate_mask(mask, dilation)
+		blur = ImageFilter.GaussianBlur(dilation)
+		blur_mask = pil_mask.filter(blur)
+		bgimg.paste(processed, (0, 0), mask=blur_mask)
 
-		def is_valid(self):
-			return True
+		return bgimg, cbx
 
-		def size(self):
-			x1, y1, x2, y2 = self.xyxy
-			return (x2 - x1) * (y2 - y1)
+	def process_image(self, bind: BMABBind, bgimg: Image, squeeze, img2img: dict):
 
-		def put(self, mask, bbox):
-			for xg in self.objects:
-				if not xg.is_valid():
-					continue
-				if xg.name == 'hand':
-					dr = ImageDraw.Draw(mask, 'L')
-					dr.rectangle(xg.xyxy, fill=255)
-					bbox.append(xg.xyxy)
-
-		def get_box(self):
-			if not self.objects:
-				return self.xyxy
-
-			x1, y1, x2, y2 = self.xyxy
-			ret = [x2, y2, x1, y1]
-			for xg in self.objects:
-				if not xg.is_valid():
-					continue
-				x = xg.xyxy
-				ret[0] = x[0] if x[0] < ret[0] else ret[0]
-				ret[1] = x[1] if x[1] < ret[1] else ret[1]
-				ret[2] = x[2] if x[2] > ret[2] else ret[2]
-				ret[3] = x[3] if x[3] > ret[3] else ret[3]
-
-			return x1, y1, x2, ret[3]
-
-		def log(self):
-			print(self.name, self.xyxy)
-			for x in self.objects:
-				x.log()
-
-	class Person(Obj):
-		name = 'person'
-
-		def __init__(self, xyxy, scale) -> None:
-			super().__init__(xyxy)
-			self.inbox = utils.fix_box_by_scale(xyxy, scale)
-
-		def is_valid(self):
-			face = False
-			hand = False
-			for xg in self.objects:
-				if xg.name == 'face':
-					face = True
-				if xg.name == 'hand':
-					hand = True
-			return face and hand
-
-		def cleanup(self):
-			print([xg.name for xg in self.objects])
-			nw = []
-			for xg in self.objects:
-				if xg.name == 'person':
-					if len(self.objects) == 1 and xg.is_valid():
-						self.xyxy = xg.xyxy
-						self.objects = xg.objects
-						return
-					else:
-						self.objects.extend(xg.objects)
-				else:
-					nw.append(xg)
-			self.objects = nw
-
-	class Head(Obj):
-		name = 'head'
-
-	class Face(Obj):
-		name = 'face'
-
-	class Hand(Obj):
-		name = 'hand'
-
-	def get_subframe(self, pilimg, scale, box_threshold=0.30, text_threshold=0.20):
 		text_prompt = "person . head . face . hand ."
-		print('threshold', box_threshold)
 		from bmab.utils import grdino
 
-		boxes, logits, phrases = grdino.dino_predict(pilimg, text_prompt, box_threshold, text_threshold)
+		hand_boxes = []
+		boxes, logits, phrases = grdino.dino_predict(bgimg, text_prompt, 0.35, 0.25)
+		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'person']
+		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'hand']
 
-		people = []
+		print('Person', len(persons))
+		print('Hand', len(hands))
 
-		def find_person(o):
-			for person in people:
-				if o.is_in(person):
-					return person
-			return None
+		bounding_box = bgimg.convert('RGB').copy()
 
-		for idx, (box, logit, phrase) in enumerate(zip(boxes, logits, phrases)):
-			if phrase == 'person':
-				p = BMABSubframeHandDetailer.Person(tuple(int(x) for x in box), scale)
-				parent = find_person(p)
-				if parent:
-					parent.append(p)
-				else:
-					people.append(p)
-		people = sorted(people, key=lambda c: c.size(), reverse=True)
+		person_bouding_box = []
+		for person in persons:
+			person_hand = [hand for hand in hands if utils.is_box_in_box(hand, person)]
+			if len(person_hand) == 0:
+				continue
+			hand_boxes.extend(person_hand)
 
-		for idx, (box, logit, phrase) in enumerate(zip(boxes, logits, phrases)):
-			bb = tuple(int(x) for x in box)
-			print(float(logit), phrase, bb)
+			bgimg, cbx = self.process_person(bind, bgimg, person, person_hand, squeeze, img2img)
+			person_bouding_box.append(cbx)
 
-			if phrase == 'head':
-				o = BMABSubframeHandDetailer.Head(bb)
-				parent = find_person(o)
-				if parent:
-					parent.append(o)
-			elif phrase == 'face' or phrase == 'head face':
-				o = BMABSubframeHandDetailer.Face(bb)
-				parent = find_person(o)
-				if parent:
-					parent.append(o)
-			elif phrase == 'hand':
-				o = BMABSubframeHandDetailer.Hand(bb)
-				parent = find_person(o)
-				if parent:
-					parent.append(o)
+		bonding_dr = ImageDraw.Draw(bounding_box)
+		for person_box in person_bouding_box:
+			bonding_dr.rectangle(person_box, outline=(0, 255, 0), width=2)
+		for hand_bbox in hand_boxes:
+			bonding_dr.rectangle(hand_bbox, outline=(255, 0, 0), width=2)
 
-		for person in people:
-			person.cleanup()
-
-		boxes = []
-		masks = []
-		mask_bboxes = []
-		for person in people:
-			bboxes = []
-			if person.is_valid():
-				mask = Image.new('L', pilimg.size, color=0)
-				person.log()
-				person.put(mask, bboxes)
-				boxes.append(person.get_box())
-				masks.append(mask)
-			mask_bboxes.append(bboxes)
-		return boxes, masks, mask_bboxes
-
-	def detailer(self, pil_img, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise):
-		pixels = utils.pil2tensor(pil_img.convert('RGB'))
-		latent = dict(samples=bind.vae.encode(pixels))
-		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg, sampler_name, scheduler, bind.positive, bind.negative, latent, denoise=denoise)[0]
-		latent = bind.vae.decode(samples["samples"])
-		return utils.tensor2pil(latent)
+		return bgimg, bounding_box
 
 	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, image=None, lora=None):
 		try:
 			from bmab.utils import grdino
 		except:
-			print('-'*30)
+			print('-' * 30)
 			print('You should install GroudingDINO on your system.')
-			print('-'*30)
+			print('-' * 30)
 			raise
 
 		squeeze = squeeze == 'enable'
@@ -602,73 +496,34 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		if lora is not None:
 			for l in lora.loras:
 				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
+
 		if bind.context is not None:
 			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+
+		img2img = {
+			'steps': steps,
+			'cfg_scale': cfg_scale,
+			'sampler_name': sampler_name,
+			'scheduler': scheduler,
+			'denoise': denoise,
+			'padding': padding,
+			'dilation': dilation,
+			'width': width,
+			'height': height,
+		}
 
 		results = []
 		bbox_results = []
 		for bgimg in utils.get_pils_from_pixels(pixels):
-
-			bounding_box = bgimg.convert('RGB').copy()
-			bonding_dr = ImageDraw.Draw(bounding_box)
-
-			boxes, masks, bboxes = self.get_subframe(bgimg, 0, box_threshold=0.35)
-			if len(boxes) > 0:
-
-				for box, mask, mbox in zip(boxes, masks, bboxes):
-					cr = bgimg.crop(box)
-
-					if squeeze:
-						bx, _ = utils.yolo.predict(cr, 'person_yolov8m-seg.pt', 0.35)
-						if len(bx) > 0:
-							bs = bx[0]
-							x, y = box[0], box[1]
-							box = bs[0] + x, bs[1] + y, bs[2] + x, bs[3] + y
-							m = sam.sam_predict_box(bgimg, box).convert('L')
-							box = m.getbbox()
-
-					box = utils.fix_box_by_scale(box, 0)
-					box = utils.fix_box_size(box)
-					box = utils.fix_box_limit(box, bgimg.size)
-					x1, y1, x2, y2 = box
-
-					x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
-
-					cbx = x1 - padding, y1 - padding, x2 + padding, y2 + padding
-
-					bonding_dr.rectangle(cbx, outline=(0, 255, 0), width=2)
-					for hand_bbox in mbox:
-						bonding_dr.rectangle(hand_bbox, outline=(255, 0, 0), width=2)
-
-					cropped = bgimg.crop(cbx)
-					resized = utils.resize_and_fill(cropped, width, height)
-					subframe = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
-
-					iratio = width / height
-					cratio = cropped.width / cropped.height
-					if iratio < cratio:
-						ratio = cropped.width / width
-						subframe = subframe.resize((int(subframe.width * ratio), int(subframe.height * ratio)))
-						y0 = (subframe.height - cropped.height) // 2
-						subframe = subframe.crop((0, y0, cropped.width, y0 + cropped.height))
-					else:
-						ratio = cropped.height / height
-						subframe = subframe.resize((int(subframe.width * ratio), int(subframe.height * ratio)))
-						x0 = (subframe.width - cropped.width) // 2
-						subframe = subframe.crop((x0, 0, x0 + cropped.width, cropped.height))
-
-					blur = ImageFilter.GaussianBlur(4)
-					mask = mask.filter(blur)
-
-					img = bgimg.copy()
-					img.paste(subframe, (cbx[0], cbx[1]))
-					bgimg.paste(img, (0, 0), mask=mask)
-			results.append(bgimg)
-			bbox_results.append(bounding_box)
+			bgimg = bgimg.convert('RGB')
+			result, bbox_result = self.process_image(bind, bgimg, squeeze, img2img)
+			results.append(result)
+			bbox_results.append(bbox_result)
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		bounding_box = utils.get_pixels_from_pils(bbox_results)
-		return (bind, bind.pixels, bounding_box)
+
+		return (bind, bind.pixels, bounding_box,)
 
 
 class BMABOpenposeHandDetailer(BMABDetailer):
@@ -691,7 +546,7 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 					'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
 					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-					'squeeze': (('disable', 'enable'), ),
+					'squeeze': (('disable', 'enable'),),
 				},
 				'optional': {
 					'image': ('IMAGE',),
@@ -735,6 +590,7 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 			torchscript_device=model_management.get_torch_device()
 		)
 		self.openpose_dicts = []
+
 		def func(image, **kwargs):
 			pose_img, openpose_dict = model(image, **kwargs)
 			self.openpose_dicts.append(openpose_dict)
@@ -822,8 +678,8 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 
 		hand_boxes = []
 		boxes, logits, phrases = grdino.dino_predict(bgimg, text_prompt, 0.35, 0.25)
-		persons = [box for box, phrase in zip(boxes, phrases) if phrase == 'person']
-		hands = [box for box, phrase in zip(boxes, phrases) if phrase == 'hand']
+		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'person']
+		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'hand']
 
 		print('Person', len(persons))
 		print('Hand', len(hands))
@@ -833,6 +689,8 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 		person_bouding_box = []
 		for person in persons:
 			person_hand = [hand for hand in hands if utils.is_box_in_box(hand, person)]
+			if len(person_hand) == 0:
+				continue
 			hand_boxes.extend(person_hand)
 
 			bgimg, bounding_box, cbx = self.process_person(bind, bgimg, bounding_box, person, person_hand, squeeze, img2img)
@@ -850,9 +708,9 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 		try:
 			from bmab.utils import grdino
 		except:
-			print('-'*30)
+			print('-' * 30)
 			print('You should install GroudingDINO on your system.')
-			print('-'*30)
+			print('-' * 30)
 			raise
 
 		squeeze = squeeze == 'enable'
@@ -884,11 +742,11 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 			result, bbox_result = self.process_image(bind, bgimg, squeeze, img2img)
 			results.append(result)
 			bbox_results.append(bbox_result)
-		
+
 		bind.pixels = utils.get_pixels_from_pils(results)
 		bounding_box = utils.get_pixels_from_pils(bbox_results)
-		
-		return (bind, bind.pixels, bounding_box, )
+
+		return (bind, bind.pixels, bounding_box,)
 
 
 class BMABDetailAnything(BMABDetailer):
@@ -917,7 +775,7 @@ class BMABDetailAnything(BMABDetailer):
 		}
 
 	RETURN_TYPES = ('BMAB bind', 'IMAGE')
-	RETURN_NAMES = ('BMAB bind', 'image', )
+	RETURN_NAMES = ('BMAB bind', 'image',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/detailer'
