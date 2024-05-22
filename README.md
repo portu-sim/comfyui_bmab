@@ -90,10 +90,16 @@ However, this cannot be installed using pip, so follow the following procedure.
 ### Windows - CompyUI Portable User
 
 ```commandline
-python_embeded\python.exe -m pip install https://github.com/Bing-su/GroundingDINO/releases/download/v24.5.19/groundingdino-24.5.19+torch2.2.2.cu121-cp311-cp311-win_amd64.whl
+python_embeded\python.exe -m pip install https://github.com/portu-sim/GroundingDINO/releases/download/groundingdino-0.1.0/groundingdino-0.1.0.torch2.3.0.cu121-cp311-cp311-win_amd64.whl
 ```
 
-### Windows & Linux
+### Windows
+
+```commandline
+pip3 install https://github.com/portu-sim/GroundingDINO/releases/download/groundingdino-0.1.0/groundingdino-0.1.0.torch2.3.0.cu121-cp311-cp311-win_amd64.whl
+```
+
+### Linux
 
 visit https://github.com/Bing-su/GroundingDINO/releases
 Copy link for suitable package URL.
