@@ -95,13 +95,13 @@ class BMABBasic:
 			'hidden': {'unique_id': 'UNIQUE_ID'}
 		}
 
-	RETURN_TYPES = ('BMAB bind', 'IMAGE', )
-	RETURN_NAMES = ('BMAB bind', 'image', )
+	RETURN_TYPES = ('BMAB bind', 'IMAGE',)
+	RETURN_NAMES = ('BMAB bind', 'image',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/basic'
 
-	def process(self, contrast, brightness, sharpeness, color_saturation, color_temperature, noise_alpha, unique_id, bind: BMABBind=None, image=None):
+	def process(self, contrast, brightness, sharpeness, color_saturation, color_temperature, noise_alpha, unique_id, bind: BMABBind = None, image=None):
 		if bind is None:
 			pixels = image
 		else:
@@ -199,7 +199,7 @@ class BMABSaveImage:
 
 	CATEGORY = 'BMAB/basic'
 
-	def save_images(self, filename_prefix='ComfyUI', prompt=None, extra_pnginfo=None, bind: BMABBind=None, images=None):
+	def save_images(self, filename_prefix='ComfyUI', prompt=None, extra_pnginfo=None, bind: BMABBind = None, images=None):
 		if images is None:
 			images = bind.pixels
 		filename_prefix += self.prefix_append

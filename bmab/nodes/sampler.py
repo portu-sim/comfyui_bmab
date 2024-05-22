@@ -112,17 +112,18 @@ class BMABExtractor:
 			},
 		}
 
-	RETURN_TYPES = ('MODEL', 'CONDITIONING', 'CONDITIONING', 'VAE', 'LATENT', 'IMAGE', 'SEED')
-	RETURN_NAMES = ('model', 'positive', 'negative', 'vae', 'latent', 'image', 'seed')
+	RETURN_TYPES = ('MODEL', 'CLIP', 'CONDITIONING', 'CONDITIONING', 'VAE', 'LATENT', 'IMAGE', 'SEED')
+	RETURN_NAMES = ('model', 'clip', 'positive', 'negative', 'vae', 'latent', 'image', 'seed')
 	FUNCTION = 'extract'
 
 	CATEGORY = 'BMAB/sampler'
 
 	def extract(self, bind: BMABBind):
+		bind = bind.copy()
 		if bind.pixels is not None:
 			t = bind.vae.encode(bind.pixels)
 			bind.latent_image = {'samples': t}
-		return bind.model, bind.positive, bind.negative, bind.vae, bind.latent_image, bind.pixels, bind.seed,
+		return bind.model, bind.clip, bind.positive, bind.negative, bind.vae, bind.latent_image, bind.pixels, bind.seed,
 
 
 class BMABSeedGenerator:

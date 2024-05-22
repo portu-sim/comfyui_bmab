@@ -5,6 +5,7 @@ from .detailers import BMABFaceDetailer, BMABPersonDetailer, BMABSimpleHandDetai
 from .detailers import BMABDetailAnything
 from .imaging import BMABDetectionCrop, BMABRemoveBackground, BMABAlphaComposit, BMABBlend
 from .imaging import BMABDetectAndMask, BMABLamaInpaint, BMABDetector, BMABSegmentAnything, BMABMasksToImages
+from .imaging import BMABLoadImage
 from .loaders import BMABLoraLoader
 from .resize import BMABResizeByPerson
 from .sampler import BMABKSampler, BMABKSamplerHiresFix, BMABPrompt, BMABIntegrator, BMABSeedGenerator, BMABExtractor

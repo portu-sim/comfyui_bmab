@@ -45,6 +45,7 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Detector': nodes.BMABDetector,
     'BMAB Segment Anything': nodes.BMABSegmentAnything,
     'BMAB Masks To Images': nodes.BMABMasksToImages,
+    'BMAB Load Image': nodes.BMABLoadImage,
 
     # SD-WebUI API
     'BMAB SD-WebUI API Server': nodes.BMABApiServer,
@@ -104,6 +105,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Detector': 'BMAB Detector',
     'BMAB Segment Anything': 'BMAB Segment Anything',
     'BMAB Masks To Images': 'BMAB Masks To Images',
+    'BMAB Load Image': 'BMAB Load Image',
 
     # SD-WebUI API
     'BMAB SD-WebUI API Server': 'BMAB SD-WebUI API Server',

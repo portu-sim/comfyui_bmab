@@ -1,9 +1,12 @@
-import torch
 import numpy as np
 
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFilter
+
+import nodes
+import folder_paths
+
 from bmab import utils
 from bmab.utils import yolo, sam
 from bmab.external.rmbg14.briarmbg import BriaRMBG
@@ -325,4 +328,18 @@ class BMABMasksToImages:
 		return (masks, )
 
 
+class BMABLoadImage(nodes.LoadImage):
 
+	@classmethod
+	def INPUT_TYPES(s):
+		input_dir = folder_paths.get_input_directory()
+		files = utils.get_file_list(input_dir, input_dir)
+		return {
+			'required': {
+				'image': (sorted(files), {'image_upload': True})
+			},
+		}
+
+	CATEGORY = 'BMAB/imaging'
+
+	RETURN_TYPES = ('IMAGE', 'MASK')
