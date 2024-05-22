@@ -291,7 +291,6 @@ def parse_prompt(prompt: str, seed):
                     candidate = [x for x in [l.strip() for l in lines] if len(x) > 0]
                     length = len(candidate)
                     prompt = prompt[:start] + candidate[seed % length] + prompt[end + 2:]
-                    print(prompt)
                 else:
                     print(f'Not found wildcard {prompt[start + 2:end].strip()}.txt')
                     prompt = prompt[:start] + prompt[end + 2:]
