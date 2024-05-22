@@ -8,7 +8,8 @@ You can composite two images or perform the Upscale function.
 
 You can download sample.json.
 
-https://github.com/portu-sim/comfyui_bmab/blob/main/resources/sample/sample.json
+https://github.com/portu-sim/comfyui_bmab/blob/main/resources/examples/example.json
+
 
 
 # Installation
