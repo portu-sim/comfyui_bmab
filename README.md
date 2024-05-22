@@ -15,7 +15,7 @@ https://github.com/portu-sim/comfyui_bmab/blob/main/resources/examples/example.j
 
 BMAB detects and enlarges the upper body of a person and performs Openpose at high resolution to fix incorrectly drawn hands.
 
-<img src="https://i.ibb.co/LRf0DKv/2024-05-23-1-42-12.png"/>
+<img src="https://i.ibb.co/ZMGdXVp/resize-2024-05-23-1-42-12.png"/>
 
 
 # Installation
