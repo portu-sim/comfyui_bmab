@@ -28,6 +28,7 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Person Detailer': nodes.BMABPersonDetailer,
     'BMAB Simple Hand Detailer': nodes.BMABSimpleHandDetailer,
     'BMAB Subframe Hand Detailer': nodes.BMABSubframeHandDetailer,
+    'BMAB Openpose Hand Detailer': nodes.BMABOpenposeHandDetailer,
     'BMAB Detail Anything': nodes.BMABDetailAnything,
 
     # Control Net
@@ -88,6 +89,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Person Detailer': 'BMAB Person Detailer',
     'BMAB Simple Hand Detailer': 'BMAB Simple Hand Detailer',
     'BMAB Subframe Hand Detailer': 'BMAB Subframe Hand Detailer',
+    'BMAB Openpose Hand Detailer': 'BMAB Openpose Hand Detailer',
     'BMAB Detail Anything': 'BMAB Detail Anything',
 
     # Control Net

@@ -11,6 +11,12 @@ You can download sample.json.
 https://github.com/portu-sim/comfyui_bmab/blob/main/resources/examples/example.json
 
 
+### Hand Detailing Sample
+
+BMAB detects and enlarges the upper body of a person and performs Openpose at high resolution to fix incorrectly drawn hands.
+
+<img src="https://i.ibb.co/LRf0DKv/2024-05-23-1-42-12.png"/>
+
 
 # Installation
 

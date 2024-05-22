@@ -9,8 +9,10 @@ from PIL import ImageDraw
 from PIL import ImageFilter
 
 from bmab import utils
+from bmab import process
 from bmab.utils import yolo, sam
 from bmab.nodes.binder import BMABBind
+from bmab.nodes.cnloader import BMABControlNetOpenpose
 
 import folder_paths
 
@@ -597,6 +599,12 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		squeeze = squeeze == 'enable'
 		pixels = bind.pixels if image is None else image
 
+		if lora is not None:
+			for l in lora.loras:
+				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+
 		results = []
 		bbox_results = []
 		for bgimg in utils.get_pils_from_pixels(pixels):
@@ -604,14 +612,8 @@ class BMABSubframeHandDetailer(BMABDetailer):
 			bounding_box = bgimg.convert('RGB').copy()
 			bonding_dr = ImageDraw.Draw(bounding_box)
 
-			if bind.context is not None:
-				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
-
 			boxes, masks, bboxes = self.get_subframe(bgimg, 0, box_threshold=0.35)
 			if len(boxes) > 0:
-				if lora is not None:
-					for l in lora.loras:
-						bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
 				for box, mask, mbox in zip(boxes, masks, bboxes):
 					cr = bgimg.crop(box)
@@ -667,6 +669,226 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		bind.pixels = utils.get_pixels_from_pils(results)
 		bounding_box = utils.get_pixels_from_pils(bbox_results)
 		return (bind, bind.pixels, bounding_box)
+
+
+class BMABOpenposeHandDetailer(BMABDetailer):
+	@classmethod
+	def INPUT_TYPES(s):
+		try:
+			from bmab.utils import grdino
+			from comfyui_controlnet_aux.node_wrappers.dwpose import DWPose_Preprocessor
+			from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
+
+			return {
+				'required': {
+					'bind': ('BMAB bind',),
+					'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+					'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+					'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+					'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
+					'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+					'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
+					'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
+					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+					'squeeze': (('disable', 'enable'), ),
+				},
+				'optional': {
+					'image': ('IMAGE',),
+					'lora': ('BMAB lora',)
+				}
+			}
+		except:
+			pass
+
+		return {
+			'required': {
+				'text': (
+					'STRING',
+					{
+						'default': 'Cannot Load GroundingDINO. To use this node, install GroudingDINO first.',
+						'multiline': True,
+						'dynamicPrompts': True
+					}
+				),
+			}
+		}
+
+	RETURN_TYPES = ('BMAB bind', 'IMAGE', 'IMAGE')
+	RETURN_NAMES = ('BMAB bind', 'image', 'annotation')
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/detailer'
+
+	def get_pose(self, image):
+		from comfyui_controlnet_aux.node_wrappers import dwpose
+		from controlnet_aux.open_pose import OpenposeDetector
+		from comfy import model_management
+
+		bbox_detector = "yolox_l.onnx"
+		pose_estimator = "dw-ll_ucoco_384.onnx"
+
+		model = dwpose.DwposeDetector.from_pretrained(
+			dwpose.DWPOSE_MODEL_NAME,
+			dwpose.DWPOSE_MODEL_NAME,
+			det_filename=bbox_detector, pose_filename=pose_estimator,
+			torchscript_device=model_management.get_torch_device()
+		)
+		self.openpose_dicts = []
+		def func(image, **kwargs):
+			pose_img, openpose_dict = model(image, **kwargs)
+			self.openpose_dicts.append(openpose_dict)
+			return pose_img
+
+		out = dwpose.common_annotator_call(func, image, include_hand=True, include_face=True, include_body=True, image_and_json=True, resolution=1024)
+		del model
+		return out
+
+	def process_openpose(self, image):
+		tensor = utils.pil2tensor(image)
+		out = self.get_pose(tensor)
+		pose_image = utils.tensor2pil(out)
+		pose_image = pose_image.resize(image.size, Image.Resampling.LANCZOS)
+		return pose_image
+
+	def process_person(self, bind: BMABBind, bgimg: Image, bounding_box: Image, person, person_hand, squeeze, img2img):
+		width, height, padding, dilation = img2img['width'], img2img['height'], img2img['padding'], img2img['dilation']
+
+		x1, y1, x2, y2 = tuple(int(x) for x in person)
+		l_y = [hand[3] for hand in person_hand]
+		max_y = max(l_y)
+		box = (x1, y1, x2, max_y)
+
+		if squeeze:
+			cr = bgimg.crop((x1, y1, x2, max_y))
+			bx, _ = utils.yolo.predict(cr, 'person_yolov8m-seg.pt', 0.35)
+			if len(bx) > 0:
+				bs = bx[0]
+				x, y = box[0], box[1]
+				box = bs[0] + x, bs[1] + y, bs[2] + x, bs[3] + y
+				m = sam.sam_predict_box(bgimg, box).convert('L')
+				box = m.getbbox()
+
+		cbx = utils.get_box_with_padding(bgimg, box, padding)
+
+		cropped = bgimg.crop(cbx)
+		resized = utils.resize_and_fill(cropped, width, height)
+		posed = self.process_openpose(resized)
+
+		# Prepare ControlNet
+		bind_2 = bind.copy()
+		openpose = BMABControlNetOpenpose()
+		cnname = openpose.get_openpose_filenames()[0]
+		pose_pixel = utils.pil2tensor(posed)
+		openpose.apply_controlnet(bind_2, cnname, 1.0, 0, 1, None, image_in=pose_pixel)
+
+		# Process Img2img
+		processed = process.process_img2img_with_mask(bind, bgimg.copy(), img2img, None, box=cbx)
+
+		# Paste hand into org image
+		mask = Image.new('L', bgimg.size, 0)
+		dr = ImageDraw.Draw(mask, 'L')
+		for hand in person_hand:
+			dr.rectangle(hand, fill=255)
+		pil_mask = utils.dilate_mask(mask, dilation)
+		blur = ImageFilter.GaussianBlur(dilation)
+		blur_mask = pil_mask.filter(blur)
+		bgimg.paste(processed, (0, 0), mask=blur_mask)
+
+		## this is for annotation
+		# Revert Pose
+		posed = utils.revert_image(width, height, posed, cropped)
+
+		# Overlay annotation image
+		mdata = posed.convert('RGBA').getdata()
+		newdata = []
+		for idx in range(0, len(mdata)):
+			if mdata[idx][0] == 0 and mdata[idx][1] == 0 and mdata[idx][2] == 0:
+				newdata.append((0, 0, 0, 0))
+			else:
+				newdata.append(mdata[idx])
+		posed_rgba = Image.new('RGBA', posed.size)
+		posed_rgba.putdata(newdata)
+		temp = Image.new('RGBA', bounding_box.size, (0, 0, 0, 0))
+		temp.paste(posed_rgba, (cbx[0], cbx[1]))
+		bounding_box = Image.alpha_composite(bounding_box.convert('RGBA'), temp).convert('RGB')
+
+		return bgimg, bounding_box, cbx
+
+	def process_image(self, bind: BMABBind, bgimg: Image, squeeze, img2img: dict):
+
+		text_prompt = "person . head . face . hand ."
+		from bmab.utils import grdino
+
+		hand_boxes = []
+		boxes, logits, phrases = grdino.dino_predict(bgimg, text_prompt, 0.35, 0.25)
+		persons = [box for box, phrase in zip(boxes, phrases) if phrase == 'person']
+		hands = [box for box, phrase in zip(boxes, phrases) if phrase == 'hand']
+
+		print('Person', len(persons))
+		print('Hand', len(hands))
+
+		bounding_box = bgimg.convert('RGB').copy()
+
+		person_bouding_box = []
+		for person in persons:
+			person_hand = [hand for hand in hands if utils.is_box_in_box(hand, person)]
+			hand_boxes.extend(person_hand)
+
+			bgimg, bounding_box, cbx = self.process_person(bind, bgimg, bounding_box, person, person_hand, squeeze, img2img)
+			person_bouding_box.append(cbx)
+
+		bonding_dr = ImageDraw.Draw(bounding_box)
+		for person_box in person_bouding_box:
+			bonding_dr.rectangle(person_box, outline=(0, 255, 0), width=2)
+		for hand_bbox in hand_boxes:
+			bonding_dr.rectangle(hand_bbox, outline=(255, 0, 0), width=2)
+
+		return bgimg, bounding_box
+
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, image=None, lora=None):
+		try:
+			from bmab.utils import grdino
+		except:
+			print('-'*30)
+			print('You should install GroudingDINO on your system.')
+			print('-'*30)
+			raise
+
+		squeeze = squeeze == 'enable'
+		pixels = bind.pixels if image is None else image
+
+		if lora is not None:
+			for l in lora.loras:
+				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
+
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+
+		img2img = {
+			'steps': steps,
+			'cfg_scale': cfg_scale,
+			'sampler_name': sampler_name,
+			'scheduler': scheduler,
+			'denoise': denoise,
+			'padding': padding,
+			'dilation': dilation,
+			'width': width,
+			'height': height,
+		}
+
+		results = []
+		bbox_results = []
+		for bgimg in utils.get_pils_from_pixels(pixels):
+			bgimg = bgimg.convert('RGB')
+			result, bbox_result = self.process_image(bind, bgimg, squeeze, img2img)
+			results.append(result)
+			bbox_results.append(bbox_result)
+		
+		bind.pixels = utils.get_pixels_from_pils(results)
+		bounding_box = utils.get_pixels_from_pils(bbox_results)
+		
+		return (bind, bind.pixels, bounding_box, )
 
 
 class BMABDetailAnything(BMABDetailer):

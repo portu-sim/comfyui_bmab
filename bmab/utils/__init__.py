@@ -376,3 +376,26 @@ def dilate_mask(mask, dilation):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (dilation, dilation))
     arr = cv2.dilate(arr, kernel, iterations=1)
     return Image.fromarray(arr)
+
+
+def is_box_in_box(box1, box2):
+    x1, y1, x2, y2 = box1
+    cx, cy = x1 + ((x2 - x1) // 2), y1 + ((y2 - y1) // 2)
+    x1, y1, x2, y2 = box2
+    return x1 <= cx <= x2 and y1 <= cy <= y2
+
+
+def revert_image(width, height, image, cropped):
+    iratio = width / height
+    cratio = cropped.width / cropped.height
+    if iratio < cratio:
+        ratio = cropped.width / width
+        image = image.resize((int(image.width * ratio), int(image.height * ratio)))
+        y0 = (image.height - cropped.height) // 2
+        image = image.crop((0, y0, cropped.width, y0 + cropped.height))
+    else:
+        ratio = cropped.height / height
+        image = image.resize((int(image.width * ratio), int(image.height * ratio)))
+        x0 = (image.width - cropped.width) // 2
+        image = image.crop((x0, 0, x0 + cropped.width, cropped.height))
+    return image

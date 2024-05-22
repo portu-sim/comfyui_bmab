@@ -143,16 +143,14 @@ class BMABControlNetOpenpose(BMABControlNet):
 
 	@classmethod
 	def INPUT_TYPES(s):
-		cnnames = [cn for cn in folder_paths.get_filename_list('controlnet') if cn.find('openpose') >= 0]
 		input_dir = folder_paths.get_input_directory()
 		files = utils.get_file_list(input_dir, input_dir)
-
 		try:
 			from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
 			return {
 				'required': {
 					'bind': ('BMAB bind',),
-					'control_net_name': (cnnames,),
+					'control_net_name': (s.get_openpose_filenames(),),
 					'strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 10.0, 'step': 0.01}),
 					'start_percent': ('FLOAT', {'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.001}),
 					'end_percent': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 1.0, 'step': 0.001}),
@@ -178,10 +176,16 @@ class BMABControlNetOpenpose(BMABControlNet):
 			}
 		}
 
+	@staticmethod
+	def get_openpose_filenames():
+		return [cn for cn in folder_paths.get_filename_list('controlnet') if cn.find('openpose') >= 0]
+
 	def apply_controlnet(self, bind: BMABBind, control_net_name, strength, start_percent, end_percent, image, **kwargs):
 		from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
 		detect_hand, detect_body, detect_face = kwargs.get('detect_hand'), kwargs.get('detect_body'), kwargs.get('detect_face')
 		c = (image, detect_hand, detect_body, detect_face)
+		if image is None and 'image_in' in kwargs:
+			return super().apply_controlnet(bind, control_net_name, strength, start_percent, end_percent, image, **kwargs)
 		if self.changed(c):
 			bgimg, _ = self.load_image(image)
 			prepro = OpenPose_Preprocessor()

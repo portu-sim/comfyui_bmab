@@ -2,7 +2,7 @@ from .basic import BMABBasic, BMABBind, BMABSaveImage, BMABEdge
 from .binder import BMABBind, BMABLoraBind
 from .cnloader import BMABControlNet, BMABControlNetOpenpose, BMABControlNetIPAdapter
 from .detailers import BMABFaceDetailer, BMABPersonDetailer, BMABSimpleHandDetailer, BMABSubframeHandDetailer
-from .detailers import BMABDetailAnything
+from .detailers import BMABOpenposeHandDetailer, BMABDetailAnything
 from .imaging import BMABDetectionCrop, BMABRemoveBackground, BMABAlphaComposit, BMABBlend
 from .imaging import BMABDetectAndMask, BMABLamaInpaint, BMABDetector, BMABSegmentAnything, BMABMasksToImages
 from .imaging import BMABLoadImage
