@@ -9,6 +9,7 @@ from ultralytics import YOLO
 from bmab import utils
 from bmab.external.lama import LamaInpainting
 from bmab.nodes.binder import BMABBind
+from bmab import process
 
 
 def predict(image: Image, model, confidence):
@@ -57,19 +58,6 @@ class BMABResizeByPerson:
 
 	CATEGORY = 'BMAB/resize'
 
-	def process_img2img(self, image, mask, bind: BMABBind, steps, cfg, sampler_name, scheduler, denoise):
-		pixels = utils.pil2tensor(image.convert('RGB'))
-		latent = dict(samples=bind.vae.encode(pixels))
-		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg, sampler_name, scheduler, bind.positive, bind.negative, latent, denoise=denoise)[0]
-		if mask is not None:
-			samples['noise_mask'] = utils.get_pixels_from_pils([mask])[0]
-		latent = bind.vae.decode(samples["samples"])
-		result = utils.tensor2pil(latent)
-		blur = ImageFilter.GaussianBlur(4)
-		blur_mask = mask.filter(blur)
-		result.paste(image, mask=blur_mask)
-		return result
-
 	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, method, alignment, ratio, dilation, image=None):
 		pixels = bind.pixels if image is None else image
 
@@ -112,13 +100,37 @@ class BMABResizeByPerson:
 				temp = stretching_image.copy()
 				temp = temp.filter(blur)
 				temp.paste(stretching_image, (0, 0), mask=blur_mask)
-				image = self.process_img2img(temp, mask, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+				img2img = {
+					'steps': steps,
+					'cfg_scale': cfg_scale,
+					'sampler_name': sampler_name,
+					'scheduler': scheduler,
+					'denoise': denoise,
+					'padding': 32,
+					'dilation': dilation,
+					'width': stretching_image.width,
+					'height': stretching_image.height,
+				}
+				image = process.process_img2img_with_mask(bind, stretching_image, img2img, mask)
+				stretching_image.save('stretching_image.png')
+				mask.save('mask.png')
 				results.append(image.convert('RGB'))
 			elif method == 'inpaint+lama':
 				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio), dilation)
 				lama = LamaInpainting()
 				stretching_image = lama(stretching_image, mask)
-				image = self.process_img2img(stretching_image, mask, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
+				img2img = {
+					'steps': steps,
+					'cfg_scale': cfg_scale,
+					'sampler_name': sampler_name,
+					'scheduler': scheduler,
+					'denoise': denoise,
+					'padding': 32,
+					'dilation': dilation,
+					'width': stretching_image.width,
+					'height': stretching_image.height,
+				}
+				image = process.process_img2img_with_mask(bind, stretching_image, img2img, mask)
 				results.append(image.convert('RGB'))
 
 		bind.pixels = utils.get_pixels_from_pils(results)
