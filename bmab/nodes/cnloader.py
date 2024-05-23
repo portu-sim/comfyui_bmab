@@ -231,6 +231,9 @@ class BMABControlNetIPAdapter(BMABControlNet):
 					'embeds_scaling': (['V only', 'K+V', 'K+V w/ C penalty', 'K+mean(V) w/ C penalty'],),
 					'resolution': ('INT', {'default': 512, 'min': 128, 'max': 1024, 'step': 8}),
 					'image': (files, {'image_upload': True}),
+				},
+				'optional': {
+					'image_in': ('IMAGE', ),
 				}
 			}
 
@@ -286,10 +289,13 @@ class BMABControlNetIPAdapter(BMABControlNet):
 
 		return resized, mask
 
-	def apply_ipadapter(self, bind: BMABBind, ipadapter_file, clip_name, weight, weight_type, combine_embeds, start_at, end_at, embeds_scaling, resolution, image):
+	def apply_ipadapter(self, bind: BMABBind, ipadapter_file, clip_name, weight, weight_type, combine_embeds, start_at, end_at, embeds_scaling, resolution, image, image_in=None):
 		from ComfyUI_IPAdapter_plus.IPAdapterPlus import IPAdapterAdvanced
 
-		pixels, mask = self.load_image(image)
+		if image_in is not None:
+			pixels = image_in
+		else:
+			pixels, mask = self.load_image(image)
 		bgimg = utils.tensor2pil(pixels).convert('RGB')
 		resized, mask = self.resize_and_fill(bgimg, resolution)
 		pixels = utils.pil2tensor(resized)

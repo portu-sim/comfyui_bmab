@@ -103,6 +103,47 @@ class BMABIntegrator:
 		return BMABBind(model, clip, vae, prompt, negative_prompt, positive, negative, latent, context, image, seed),
 
 
+class BMABImportIntegrator:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'model': ('MODEL',),
+				'clip': ('CLIP',),
+				'vae': ('VAE',),
+				'context': ('CONTEXT',),
+				'positive': ('CONDITIONING',),
+				'negative': ('CONDITIONING',),
+				'stop_at_clip_layer': ('INT', {'default': -2, 'min': -24, 'max': -1, 'step': 1}),
+			},
+			'optional': {
+				'seed_in': ('SEED',),
+				'latent': ('LATENT',),
+				'image': ('IMAGE',),
+			}
+		}
+
+	RETURN_TYPES = ('BMAB bind', )
+	RETURN_NAMES = ('BMAB bind', )
+	FUNCTION = 'integrate_inputs'
+
+	CATEGORY = 'BMAB/sampler'
+
+	def integrate_inputs(self, model, clip, vae, context: BMABContext, positive, negative, stop_at_clip_layer, seed_in=None, latent=None, image=None):
+		if context is None and seed_in is None:
+			print('No SEED defined.')
+			raise ValueError('No SEED defined')
+
+		if context is None:
+			seed = seed_in
+		else:
+			seed = context.seed
+
+		clip.clip_layer(stop_at_clip_layer)
+
+		return BMABBind(model, clip, vae, None, None, positive, negative, latent, context, image, seed),
+
+
 class BMABExtractor:
 	@classmethod
 	def INPUT_TYPES(s):
@@ -372,3 +413,107 @@ class BMABPrompt:
 			bind.positive = [[embeddings_final, {'pooled_output': pooled}]]
 
 		return (bind, )
+
+
+class BMABKSamplerKohyaDeepShrink:
+	upscale_methods = ["bicubic", "nearest-exact", "bilinear", "area", "bislerp"]
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'bind': ('BMAB bind',),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
+				'denoise': ('FLOAT', {'default': 0.4, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+				'scale': ('FLOAT', {'default': 2.0, 'min': 0, 'max': 4.0, 'step': 0.001}),
+				'width': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
+				'height': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
+				"block_number": ("INT", {"default": 3, "min": 1, "max": 32, "step": 1}),
+				"start_percent": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.001}),
+				"end_percent": ("FLOAT", {"default": 0.35, "min": 0.0, "max": 1.0, "step": 0.001}),
+				"downscale_after_skip": ("BOOLEAN", {"default": True}),
+				"downscale_method": (s.upscale_methods,),
+				"upscale_method": (s.upscale_methods,),
+			},
+			'optional': {
+				'image': ('IMAGE',),
+				'lora': ('BMAB lora',)
+			}
+		}
+
+	RETURN_TYPES = ('BMAB bind', 'IMAGE',)
+	RETURN_NAMES = ('BMAB bind', 'image',)
+	FUNCTION = 'sample'
+
+	CATEGORY = 'BMAB/sampler'
+
+	def load_lora(self, model, clip, lora_name, strength_model, strength_clip):
+		print(f'Loading lora {lora_name}')
+		lora_path = folder_paths.get_full_path('loras', lora_name)
+		lora = comfy.utils.load_torch_file(lora_path, safe_load=True)
+		model_lora, clip_lora = comfy.sd.load_lora_for_models(model, clip, lora, strength_model, strength_clip)
+		return (model_lora, clip_lora)
+
+	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, scale, width, height, block_number, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method, image=None, lora: BMABLoraBind = None):
+		pixels = bind.pixels if image is None else image
+		if pixels is None:
+			pixels = bind.vae.decode(bind.latent_image["samples"])
+
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+		if scale != 0:
+			_, h, w, c = pixels.shape
+			width, height = int(w * scale), int(h * scale)
+		_, org_height, org_width, c = pixels.shape
+		_scale = height / org_height
+		r_length = max(width, height)
+		downscale_factor = r_length / 1024
+		print('downscale_factor', downscale_factor)
+
+		m = self.patch(bind.model, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method)
+
+		pil_images = utils.get_pils_from_pixels(pixels)
+		results = [utils.resize_and_fill(img, r_length, r_length) for img in pil_images]
+		pixels = utils.get_pixels_from_pils(results)
+
+		print('Hires SEED', bind.seed, bind.model)
+		latent = dict(samples=bind.vae.encode(pixels))
+		if lora is not None:
+			for l in lora.loras:
+				m, bind.clip = self.load_lora(m, bind.clip, *l)
+		samples = nodes.common_ksampler(m, bind.seed, steps, cfg_scale, sampler_name, scheduler, bind.positive, bind.negative, latent, denoise=denoise, force_full_denoise=True)[0]
+		pixels = bind.vae.decode(samples['samples'])
+		pil_images = utils.get_pils_from_pixels(pixels)
+		results = [utils.crop(img, width, height) for img in pil_images]
+		bind.pixels = utils.get_pixels_from_pils(results)
+		return bind, bind.pixels,
+
+	def patch(self, model, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method):
+		model_sampling = model.get_model_object("model_sampling")
+		sigma_start = model_sampling.percent_to_sigma(start_percent)
+		sigma_end = model_sampling.percent_to_sigma(end_percent)
+
+		def input_block_patch(h, transformer_options):
+			if transformer_options["block"][1] == block_number:
+				sigma = transformer_options["sigmas"][0].item()
+				if sigma <= sigma_start and sigma >= sigma_end:
+					h = comfy.utils.common_upscale(h, round(h.shape[-1] * (1.0 / downscale_factor)), round(h.shape[-2] * (1.0 / downscale_factor)), downscale_method, "disabled")
+			return h
+
+		def output_block_patch(h, hsp, transformer_options):
+			if h.shape[2] != hsp.shape[2]:
+				h = comfy.utils.common_upscale(h, hsp.shape[-1], hsp.shape[-2], upscale_method, "disabled")
+			return h, hsp
+
+		m = model.clone()
+		if downscale_after_skip:
+			m.set_model_input_block_patch_after_skip(input_block_patch)
+		else:
+			m.set_model_input_block_patch(input_block_patch)
+		m.set_model_output_block_patch(output_block_patch)
+		return m
+
+

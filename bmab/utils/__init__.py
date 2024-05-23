@@ -247,7 +247,7 @@ def get_box_with_padding(mask, box, pad=0):
 	return (max(x1 - pad, 0), max(y1 - pad, 0), min(x2 + pad, mask.size[0]), min(y2 + pad, mask.size[1])) if pad else box
 
 
-def resize_and_fill(im, width, height):
+def resize_and_fill(im, width, height, fill_black=False):
 	ratio = width / height
 	src_ratio = im.width / im.height
 
@@ -258,17 +258,32 @@ def resize_and_fill(im, width, height):
 	res = Image.new("RGB", (width, height))
 	res.paste(resized, box=(width // 2 - src_w // 2, height // 2 - src_h // 2))
 
-	if ratio < src_ratio:
-		fill_height = height // 2 - src_h // 2
-		if fill_height > 0:
-			res.paste(resized.resize((width, fill_height), box=(0, 0, width, 0)), box=(0, 0))
-			res.paste(resized.resize((width, fill_height), box=(0, resized.height, width, resized.height)), box=(0, fill_height + src_h))
-	elif ratio > src_ratio:
-		fill_width = width // 2 - src_w // 2
-		if fill_width > 0:
-			res.paste(resized.resize((fill_width, height), box=(0, 0, 0, height)), box=(0, 0))
-			res.paste(resized.resize((fill_width, height), box=(resized.width, 0, resized.width, height)), box=(fill_width + src_w, 0))
+	if not fill_black:
+		if ratio < src_ratio:
+			fill_height = height // 2 - src_h // 2
+			if fill_height > 0:
+				res.paste(resized.resize((width, fill_height), box=(0, 0, width, 0)), box=(0, 0))
+				res.paste(resized.resize((width, fill_height), box=(0, resized.height, width, resized.height)), box=(0, fill_height + src_h))
+		elif ratio > src_ratio:
+			fill_width = width // 2 - src_w // 2
+			if fill_width > 0:
+				res.paste(resized.resize((fill_width, height), box=(0, 0, 0, height)), box=(0, 0))
+				res.paste(resized.resize((fill_width, height), box=(resized.width, 0, resized.width, height)), box=(fill_width + src_w, 0))
 	return res
+
+
+def crop(image, width, height):
+	if image.width != width and image.height != height:
+		raise ValueError('Image not matched')
+	iratio = image.width / image.height
+	cratio = width / height
+	if iratio < cratio:
+		y0 = (image.height - height) // 2
+		image = image.crop((0, y0, width, y0 + height))
+	else:
+		x0 = (image.width - width) // 2
+		image = image.crop((x0, 0, x0 + width, height))
+	return image
 
 
 resource_path = os.path.join(os.path.dirname(__file__), '../../resources')

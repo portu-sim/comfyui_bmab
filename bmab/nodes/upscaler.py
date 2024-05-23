@@ -54,56 +54,6 @@ class BMABUpscale:
 		return BMABBind.result(bind, pixels, )
 
 
-class BMABResizeAndFill:
-	@classmethod
-	def INPUT_TYPES(s):
-		return {
-			'required': {
-				'width': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
-				'height': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
-			},
-			'optional': {
-				'image': ('IMAGE',),
-			},
-		}
-
-	RETURN_TYPES = ('IMAGE', 'MASK', )
-	RETURN_NAMES = ('image', 'mask', )
-	FUNCTION = 'upscale'
-
-	CATEGORY = 'BMAB/upscale'
-
-	def upscale(self, image, width, height):
-		results = []
-		masks = []
-		for bgimg in utils.get_pils_from_pixels(image):
-			resized = Image.new('RGB', (width, height), 0)
-
-			mask = Image.new('L', (width, height), 0)
-			dr = ImageDraw.Draw(mask, 'L')
-
-			iratio = width / height
-			cratio = bgimg.width / bgimg.height
-			if iratio < cratio:
-				ratio = width / bgimg.width
-				w, h = int(bgimg.width * ratio), int(bgimg.height * ratio)
-				y0 = (height - h) // 2
-				dr.rectangle((0, y0, w, y0 + h), fill=255)
-				resized.paste(bgimg.resize((w, h), Image.Resampling.LANCZOS), (0, y0))
-			else:
-				ratio = height / bgimg.height
-				w, h = int(bgimg.width * ratio), int(bgimg.height * ratio)
-				x0 = (width - w) // 2
-				dr.rectangle((x0, 0, x0 + w, h), fill=255)
-				resized.paste(bgimg.resize((w, h), Image.Resampling.LANCZOS), (x0, 0))
-			results.append(resized)
-			masks.append(mask)
-
-		pixels = utils.get_pixels_from_pils(results)
-		mask_pixels = utils.get_pixels_from_pils(results)
-		return (pixels, mask_pixels, )
-
-
 class BMABUpscaleWithModel:
 	@classmethod
 	def INPUT_TYPES(s):

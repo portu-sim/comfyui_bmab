@@ -3,6 +3,7 @@ import nodes
 
 from PIL import Image
 from PIL import ImageOps
+from PIL import ImageDraw
 from PIL import ImageFilter
 from ultralytics import YOLO
 from bmab import utils
@@ -122,3 +123,30 @@ class BMABResizeByPerson:
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels,)
+
+
+class BMABResizeAndFill:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'image': ('IMAGE',),
+				'width': ('INT', {'default': 1024, 'min': 0, 'max': 10000}),
+				'height': ('INT', {'default': 1024, 'min': 0, 'max': 10000}),
+				'fill_black': (('disable', 'enable'), )
+			},
+		}
+
+	RETURN_TYPES = ('IMAGE', )
+	RETURN_NAMES = ('image', )
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/resize'
+
+	def process(self, image, width, height, fill_black):
+		results = []
+		fill_black = fill_black == 'enable'
+		for img in utils.get_pils_from_pixels(image):
+			results.append(utils.resize_and_fill(img, width, height, fill_black=fill_black))
+		pixels = utils.get_pixels_from_pils(results)
+		return (pixels,)

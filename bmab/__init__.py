@@ -22,6 +22,8 @@ NODE_CLASS_MAPPINGS = {
     'BMAB KSamplerHiresFix': nodes.BMABKSamplerHiresFix,
     'BMAB KSamplerHiresFixWithUpscaler': nodes.BMABKSamplerHiresFixWithUpscaler,
     'BMAB Context': nodes.BMABContextNode,
+    'BMAB Import Integrator': nodes.BMABImportIntegrator,
+    'BMAB KSamplerKohyaDeepShrink': nodes.BMABKSamplerKohyaDeepShrink,
 
     # Detailer
     'BMAB Face Detailer': nodes.BMABFaceDetailer,
@@ -83,6 +85,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Extractor': 'BMAB Extractor',
     'BMAB SeedGenerator': 'BMAB Seed Generator',
     'BMAB Context': 'BMAB Context',
+    'BMAB Import Integrator': 'BMAB Import Integrator',
+    'BMAB KSamplerKohyaDeepShrink': 'BMAB KSampler with Kohya Deep Shrink',
 
     # Detailer
     'BMAB Face Detailer': 'BMAB Face Detailer',
