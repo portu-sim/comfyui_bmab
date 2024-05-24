@@ -401,6 +401,8 @@ class BMABPrompt:
 	def prompt(self, bind: BMABBind, text, token_normalization, weight_interpretation):
 
 		bind = bind.copy()
+		if text.find('__prompt__') >= 0 and bind.prompt is not None and bind.prompt != '':
+			text = text.replace('__prompt__', bind.prompt)
 		bind.prompt = text
 		bind.clip = bind.clip.clone()
 		prompt = utils.parse_prompt(bind.prompt, bind.seed)
