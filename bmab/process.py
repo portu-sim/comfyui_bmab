@@ -37,7 +37,7 @@ def process_img2img(bind: BMABBind, image, params):
 	return result
 
 
-def process_img2img_with_mask(bind: BMABBind, image, params, mask, box=None):
+def process_img2img_with_mask(bind: BMABBind, image, params, mask=None, box=None):
 	width, height, padding, dilation = params['width'], params['height'], params['padding'], params['dilation']
 
 	if box is None:
