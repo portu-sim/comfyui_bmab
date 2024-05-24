@@ -44,7 +44,7 @@ class BMABResizeByPerson:
 				'denoise': ('FLOAT', {'default': 0.5, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				'method': (s.resize_methods,),
 				'alignment': (s.resize_alignment,),
-				'ratio': ('FLOAT', {'default': 0.85, 'min': 0.6, 'max': 0.95, 'step': 0.01}),
+				'ratio': ('FLOAT', {'default': 0.85, 'min': 0.1, 'max': 0.95, 'step': 0.01}),
 				'dilation': ('INT', {'default': 30, 'min': 4, 'max': 128, 'step': 1}),
 			},
 			'optional': {

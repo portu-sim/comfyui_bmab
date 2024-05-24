@@ -48,6 +48,7 @@ class BMABDetailer:
 
 
 class BMABFaceDetailer(BMABDetailer):
+	models = ['bmab_face_nm_yolov8n.pt', 'bmab_face_sm_yolov8n.pt', 'face_yolov8n.pt', 'face_yolov8m.pt', 'face_yolov8n_v2.pt', 'face_yolov8s.pt']
 	@classmethod
 	def INPUT_TYPES(s):
 		return {
@@ -62,6 +63,9 @@ class BMABFaceDetailer(BMABDetailer):
 				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
 				'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 				'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+				'model': (s.models, ),
+				'limit': ('INT', {'default': 1, 'min': 0, 'max': 5, 'step': 1}),
+				'order': (['Size', 'Left', 'Right', 'Center', 'Score'], ),
 			},
 			'optional': {
 				'image': ('IMAGE',),
@@ -82,52 +86,78 @@ class BMABFaceDetailer(BMABDetailer):
 		latent = bind.vae.decode(samples["samples"])
 		return utils.tensor2pil(latent)
 
-	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
+	def process_faces(self, bind, bgimg, img2img, model, limit, order):
+		boxes, logits = utils.yolo.predict(bgimg, model, 0.35)
+		candidate = []
+		if order == 'Left':
+			for box, logit in zip(boxes, logits):
+				x1, y1, x2, y2 = box
+				value = x1 + (x2 - x1) // 2
+				print('detected(from left)', float(logit), value)
+				candidate.append((value, box, logit))
+			candidate = sorted(candidate, key=lambda c: c[0])
+		elif order == 'Right':
+			for box, logit in zip(boxes, logits):
+				x1, y1, x2, y2 = box
+				value = x1 + (x2 - x1) // 2
+				print('detected(from right)', float(logit), value)
+				candidate.append((value, box, logit))
+			candidate = sorted(candidate, key=lambda c: c[0], reverse=True)
+		elif order == 'Center':
+			for box, logit in zip(boxes, logits):
+				x1, y1, x2, y2 = box
+				cx = bgimg.width / 2
+				cy = bgimg.height / 2
+				ix = x1 + (x2 - x1) // 2
+				iy = y1 + (y2 - y1) // 2
+				value = math.sqrt(abs(cx - ix) ** 2 + abs(cy - iy) ** 2)
+				print('detected(from center)', float(logit), value)
+				candidate.append((value, box, logit))
+			candidate = sorted(candidate, key=lambda c: c[0])
+		elif order == 'Size':
+			for box, logit in zip(boxes, logits):
+				x1, y1, x2, y2 = box
+				value = (x2 - x1) * (y2 - y1)
+				print('detected(size)', float(logit), value)
+				candidate.append((value, box, logit))
+			candidate = sorted(candidate, key=lambda c: c[0], reverse=True)
+		else:
+			for box, logit in zip(boxes, logits):
+				value = float(logit)
+				print(f'detected({order})', float(logit), value)
+				candidate.append((value, box, logit))
+			candidate = sorted(candidate, key=lambda c: c[0], reverse=True)
+
+		for index, (value, box, logit) in enumerate(candidate):
+			if limit != 0 and index > limit:
+				return bgimg
+			bgimg = process.process_img2img_with_mask(bind, bgimg, img2img, box=box)
+		return bgimg
+
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, model, limit, order, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
+
+		if bind.context is not None:
+			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+
+		if lora is not None:
+			for l in lora.loras:
+				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 
 		results = []
 		for bgimg in utils.get_pils_from_pixels(pixels):
-			if bind.context is not None:
-				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
-
-			if lora is not None:
-				for l in lora.loras:
-					bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
-
-			boxes, confs = utils.yolo.predict(bgimg, 'face_yolov8n.pt', 0.35)
-			for box, conf in zip(boxes, confs):
-				x1, y1, x2, y2 = tuple(int(x) for x in box)
-				x1, y1, x2, y2 = x1 - dilation, y1 - dilation, x2 + dilation, y2 + dilation
-				cbx = utils.get_box_with_padding(bgimg, (x1, y1, x2, y2), padding)
-				cropped = bgimg.crop(cbx)
-				resized = utils.resize_and_fill(cropped, width, height)
-				face = self.detailer(resized, bind, steps, cfg_scale, sampler_name, scheduler, denoise)
-				face = self.apply_color_correction(resized, face)
-
-				iratio = width / height
-				cratio = cropped.width / cropped.height
-				if iratio < cratio:
-					ratio = cropped.width / width
-					face = face.resize((int(face.width * ratio), int(face.height * ratio)))
-					y0 = (face.height - cropped.height) // 2
-					face = face.crop((0, y0, cropped.width, y0 + cropped.height))
-				else:
-					ratio = cropped.height / height
-					face = face.resize((int(face.width * ratio), int(face.height * ratio)))
-					x0 = (face.width - cropped.width) // 2
-					face = face.crop((x0, 0, x0 + cropped.width, cropped.height))
-
-				mask = Image.new('L', bgimg.size, 0)
-				dr = ImageDraw.Draw(mask, 'L')
-				dr.rectangle((x1, y1, x2, y2), fill=255)
-				blur = ImageFilter.GaussianBlur(10)
-				mask = mask.filter(blur)
-
-				img = bgimg.copy()
-				img.paste(face, (cbx[0], cbx[1]))
-				bgimg.paste(img, (0, 0), mask=mask)
-
-			results.append(bgimg.convert('RGB'))
+			img2img = {
+				'steps': steps,
+				'cfg_scale': cfg_scale,
+				'sampler_name': sampler_name,
+				'scheduler': scheduler,
+				'denoise': denoise,
+				'padding': padding,
+				'dilation': dilation,
+				'width': width,
+				'height': height,
+			}
+			results.append(self.process_faces(bind, bgimg, img2img, model, limit, order))
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
@@ -434,7 +464,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		cbx = utils.get_box_with_padding(bgimg, box, padding)
 
 		# Process Img2img
-		processed = process.process_img2img_with_mask(bind, bgimg.copy(), img2img, None, box=cbx)
+		processed = process.process_img2img_with_mask(bind, bgimg.copy(), img2img, box=cbx)
 
 		# Paste hand into org image
 		mask = Image.new('L', bgimg.size, 0)
@@ -639,7 +669,7 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 		openpose.apply_controlnet(bind_2, cnname, 1.0, 0, 1, None, image_in=pose_pixel)
 
 		# Process Img2img
-		processed = process.process_img2img_with_mask(bind, bgimg.copy(), img2img, None, box=cbx)
+		processed = process.process_img2img_with_mask(bind, bgimg.copy(), img2img, box=cbx)
 
 		# Paste hand into org image
 		mask = Image.new('L', bgimg.size, 0)

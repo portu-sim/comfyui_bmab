@@ -25,6 +25,8 @@ class BMABLoraLoader:
 	def load_lora(self, lora_name, strength_model, strength_clip, lora: BMABLoraBind=None):
 		if lora is None:
 			lora = BMABLoraBind()
+		else:
+			lora = lora.copy()
 		lora.append(lora_name, strength_model, strength_clip)
 		return (lora, )
 

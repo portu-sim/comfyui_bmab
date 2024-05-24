@@ -54,3 +54,6 @@ class BMABLoraBind:
 
 	def append(self, *args):
 		self.loras.append(args)
+
+	def copy(self):
+		return copy.deepcopy(self)

@@ -135,7 +135,7 @@ class BMABAlphaComposit:
 	def process(self, image1, image2):
 		results = []
 		for image1, image2 in zip(utils.get_pils_from_pixels(image1), utils.get_pils_from_pixels(image2)):
-			results.append(Image.alpha_composite(image1.convert('RGBA'), image2.convert('RGBA')))
+			results.append(Image.alpha_composite(image1.convert('RGBA'), image2.convert('RGBA')).convert('RGB'))
 		pixels = utils.get_pixels_from_pils(results)
 		return (pixels, )
 
