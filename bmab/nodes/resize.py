@@ -67,7 +67,7 @@ class BMABResizeByPerson:
 			if bind.context is not None:
 				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 
-			boxes, confs = predict(image, 'person_yolov8m-seg.pt', 0.35)
+			boxes, confs = predict(image, 'person_yolov8n-seg.pt', 0.35)
 			if len(boxes) == 0:
 				results.append(image.convert('RGB'))
 				continue
@@ -93,7 +93,7 @@ class BMABResizeByPerson:
 			if method == 'stretching':
 				results.append(stretching_image.convert('RGB'))
 			elif method == 'inpaint':
-				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio), dilation)
+				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio))
 				blur = ImageFilter.GaussianBlur(10)
 				blur_mask = mask.filter(blur)
 				blur_mask = ImageOps.invert(blur_mask)
@@ -112,13 +112,13 @@ class BMABResizeByPerson:
 					'height': stretching_image.height,
 				}
 				image = process.process_img2img_with_mask(bind, stretching_image, img2img, mask)
-				stretching_image.save('stretching_image.png')
-				mask.save('mask.png')
 				results.append(image.convert('RGB'))
 			elif method == 'inpaint+lama':
-				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio), dilation)
+				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio))
 				lama = LamaInpainting()
 				stretching_image = lama(stretching_image, mask)
+				stretching_image.save('stretching_image.png')
+				mask.save('mask.png')
 				img2img = {
 					'steps': steps,
 					'cfg_scale': cfg_scale,
@@ -162,3 +162,31 @@ class BMABResizeAndFill:
 			results.append(utils.resize_and_fill(img, width, height, fill_black=fill_black))
 		pixels = utils.get_pixels_from_pils(results)
 		return (pixels,)
+
+
+class BMABCrop:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'image': ('IMAGE',),
+				'width': ('INT', {'default': 2, 'min': 0, 'max': 10000}),
+				'height': ('INT', {'default': 3, 'min': 0, 'max': 10000}),
+				'resize': (('disable', 'enable'), )
+			},
+		}
+
+	RETURN_TYPES = ('IMAGE', )
+	RETURN_NAMES = ('image', )
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/resize'
+
+	def process(self, image, width, height, resize):
+		results = []
+		resize = resize == 'enable'
+		for img in utils.get_pils_from_pixels(image):
+			results.append(utils.crop(img, width, height, resized=resize))
+		pixels = utils.get_pixels_from_pils(results)
+		return (pixels,)
+

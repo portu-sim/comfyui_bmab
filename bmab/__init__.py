@@ -6,13 +6,16 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Basic': nodes.BMABBasic,
     'BMAB Edge': nodes.BMABEdge,
     'BMAB Upscaler': nodes.BMABUpscale,
-    'BMAB Resize By Person': nodes.BMABResizeByPerson,
     'BMAB Save Image': nodes.BMABSaveImage,
     'BMAB Upscale With Model': nodes.BMABUpscaleWithModel,
     'BMAB LoRA Loader': nodes.BMABLoraLoader,
     'BMAB Prompt': nodes.BMABPrompt,
-    'BMAB Resize and Fill': nodes.BMABResizeAndFill,
     'BMAB Google Gemini Prompt': nodes.BMABGoogleGemini,
+
+    # Resize
+    'BMAB Resize By Person': nodes.BMABResizeByPerson,
+    'BMAB Resize and Fill': nodes.BMABResizeAndFill,
+    'BMAB Crop': nodes.BMABCrop,
 
     # Sampler
     'BMAB Integrator': nodes.BMABIntegrator,
@@ -24,6 +27,7 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Context': nodes.BMABContextNode,
     'BMAB Import Integrator': nodes.BMABImportIntegrator,
     'BMAB KSamplerKohyaDeepShrink': nodes.BMABKSamplerKohyaDeepShrink,
+    'BMAB Clip Text Encoder SDXL': nodes.BMABClipTextEncoderSDXL,
 
     # Detailer
     'BMAB Face Detailer': nodes.BMABFaceDetailer,
@@ -68,14 +72,17 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Edge': 'BMAB Edge',
     'BMAB DinoSam': 'BMAB DinoSam',
     'BMAB Upscaler': 'BMAB Upscaler',
-    'BMAB Resize By Person': 'BMAB Resize By Person',
     'BMAB Control Net': 'BMAB ControlNet',
     'BMAB Save Image': 'BMAB Save Image',
     'BMAB Upscale With Model': 'BMAB Upscale With Model',
     'BMAB LoRA Loader': 'BMAB Lora Loader',
     'BMAB Prompt': 'BMAB Prompt',
-    'BMAB Resize and Fill': 'BMAB Resize And Fill',
     'BMAB Google Gemini Prompt': 'BMAB Google Gemini API',
+
+    # Resize
+    'BMAB Resize By Person': 'BMAB Resize By Person',
+    'BMAB Resize and Fill': 'BMAB Resize And Fill',
+    'BMAB Crop': 'BMAB Crop',
 
     # Sampler
     'BMAB Integrator': 'BMAB Integrator',
@@ -87,6 +94,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Context': 'BMAB Context',
     'BMAB Import Integrator': 'BMAB Import Integrator',
     'BMAB KSamplerKohyaDeepShrink': 'BMAB KSampler with Kohya Deep Shrink',
+    'BMAB Clip Text Encoder SDXL': 'BMAB Clip Text Encoder SDXL',
 
     # Detailer
     'BMAB Face Detailer': 'BMAB Face Detailer',

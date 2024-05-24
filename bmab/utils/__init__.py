@@ -272,15 +272,25 @@ def resize_and_fill(im, width, height, fill_black=False):
 	return res
 
 
-def crop(image, width, height):
-	if image.width != width and image.height != height:
-		raise ValueError('Image not matched')
+def crop(image, width, height, resized=True):
+	# if image.width != width and image.height != height:
+	#	raise ValueError('Image not matched')
 	iratio = image.width / image.height
 	cratio = width / height
 	if iratio < cratio:
+		if resized:
+			ratio = width / image.width
+			image = image.resize((int(image.width * ratio), int(image.height * ratio)))
+		else:
+			width, height = image.width, int(image.width * height / width)
 		y0 = (image.height - height) // 2
 		image = image.crop((0, y0, width, y0 + height))
 	else:
+		if resized:
+			ratio = height / image.height
+			image = image.resize((int(image.width * ratio), int(image.height * ratio)))
+		else:
+			width, height = int(image.height * width / height), image.height
 		x0 = (image.width - width) // 2
 		image = image.crop((x0, 0, x0 + width, height))
 	return image

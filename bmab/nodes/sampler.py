@@ -7,6 +7,7 @@ from PIL import Image
 
 from comfy_extras.chainner_models import model_loading
 from comfy import model_management
+from comfy_extras import nodes_clip_sdxl
 
 from bmab import utils
 from bmab.nodes.binder import BMABBind
@@ -216,8 +217,8 @@ class BMABKSampler:
 		model_lora, clip_lora = comfy.sd.load_lora_for_models(model, clip, lora, strength_model, strength_clip)
 		return (model_lora, clip_lora)
 
-	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise=1.0, lora: BMABLoraBind = None):
-		print('Sampler SEED', bind.seed, bind.model)
+	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, lora: BMABLoraBind = None):
+		print('Sampler SEED', bind.seed)
 		if bind.context is not None:
 			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
 		if lora is not None:
@@ -517,3 +518,20 @@ class BMABKSamplerKohyaDeepShrink:
 		return m
 
 
+class BMABClipTextEncoderSDXL(nodes_clip_sdxl.CLIPTextEncodeSDXL):
+
+	@classmethod
+	def INPUT_TYPES(s):
+		dic = super().INPUT_TYPES()
+		dic['optional'] = {
+			'seed': ('SEED', )
+		}
+		return dic
+
+	CATEGORY = 'BMAB/sampler'
+
+	def encode(self, clip, width, height, crop_w, crop_h, target_width, target_height, text_g, text_l, seed=None):
+		if seed is not None:
+			text_g = utils.parse_prompt(text_g, seed)
+			text_l = utils.parse_prompt(text_l, seed)
+		return super().encode(clip, width, height, crop_w, crop_h, target_width, target_height, text_g, text_l)
