@@ -231,3 +231,22 @@ class BMABSaveImage:
 			counter += 1
 
 		return {'ui': {'images': results}}
+
+
+class BMABText:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'text': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+			}
+		}
+
+	RETURN_TYPES = ('STRING', )
+	RETURN_NAMES = ('string', )
+	FUNCTION = 'export'
+
+	CATEGORY = 'BMAB/basic'
+
+	def export(self, text):
+		return (text, )

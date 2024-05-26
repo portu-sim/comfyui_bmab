@@ -5,6 +5,7 @@ from bmab import override
 NODE_CLASS_MAPPINGS = {
     'BMAB Basic': nodes.BMABBasic,
     'BMAB Edge': nodes.BMABEdge,
+    'BMAB Text': nodes.BMABText,
     'BMAB Upscaler': nodes.BMABUpscale,
     'BMAB Save Image': nodes.BMABSaveImage,
     'BMAB Upscale With Model': nodes.BMABUpscaleWithModel,
@@ -70,6 +71,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Basic': 'BMAB Basic',
     'BMAB Edge': 'BMAB Edge',
+    'BMAB Text': 'BMAB Text',
     'BMAB DinoSam': 'BMAB DinoSam',
     'BMAB Upscaler': 'BMAB Upscaler',
     'BMAB Control Net': 'BMAB ControlNet',

@@ -57,7 +57,7 @@ class BMABIntegrator:
 				'context': ('CONTEXT',),
 				'stop_at_clip_layer': ('INT', {'default': -2, 'min': -24, 'max': -1, 'step': 1}),
 				'token_normalization': (['none', 'mean', 'length', 'length+mean'],),
-				'weight_interpretation': (['original', 'comfy', 'A1111', 'compel', 'comfy++', 'down_weight'],),
+				'weight_interpretation': (['original', 'sdxl', 'comfy', 'A1111', 'compel', 'comfy++', 'down_weight'],),
 				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'negative_prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 			},
@@ -73,6 +73,19 @@ class BMABIntegrator:
 	FUNCTION = 'integrate_inputs'
 
 	CATEGORY = 'BMAB/sampler'
+
+	def encode_sdxl(self, clip, text_g, text_l):
+		width, height, crop_w, crop_h, target_width, target_height = 1024, 1024, 0, 0, 1024, 1024
+		tokens = clip.tokenize(text_g)
+		tokens["l"] = clip.tokenize(text_l)["l"]
+		if len(tokens["l"]) != len(tokens["g"]):
+			empty = clip.tokenize("")
+			while len(tokens["l"]) < len(tokens["g"]):
+				tokens["l"] += empty["l"]
+			while len(tokens["l"]) > len(tokens["g"]):
+				tokens["g"] += empty["g"]
+		cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+		return [[cond, {"pooled_output": pooled, "width": width, "height": height, "crop_w": crop_w, "crop_h": crop_h, "target_width": target_width, "target_height": target_height}]]
 
 	def integrate_inputs(self, model, clip, vae, context: BMABContext, stop_at_clip_layer, token_normalization, weight_interpretation, prompt, negative_prompt, seed_in=None, latent=None, image=None):
 		if context is None and seed_in is None:
@@ -93,6 +106,11 @@ class BMABIntegrator:
 			tokens = clip.tokenize(negative_prompt)
 			cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
 			negative = [[cond, {'pooled_output': pooled}]]
+		elif weight_interpretation == 'sdxl':
+			prompt = utils.parse_prompt(prompt, seed)
+			negative_prompt = utils.parse_prompt(negative_prompt, seed)
+			positive = self.encode_sdxl(clip, prompt, prompt)
+			negative = self.encode_sdxl(clip, negative_prompt, negative_prompt)
 		else:
 			embeddings_final, pooled = advanced_encode(clip, prompt, token_normalization, weight_interpretation, w_max=1.0, apply_to_pooled=False)
 			positive = [[embeddings_final, {'pooled_output': pooled}]]
@@ -360,15 +378,17 @@ class BMABKSamplerHiresFixWithUpscaler:
 			_, h, w, c = pixels.shape
 			width, height = int(w * scale), int(h * scale)
 
-		if model_name == 'LANCZOS':
-			pil_images = utils.get_pils_from_pixels(pixels)
-			results = [img.resize((width, height), Image.Resampling.LANCZOS) for img in pil_images]
-			pixels = utils.get_pixels_from_pils(results)
-		else:
-			s = self.upscale_with_model(model_name, pixels)
-			pil_images = utils.get_pils_from_pixels(s)
-			results = [img.resize((width, height), Image.Resampling.LANCZOS) for img in pil_images]
-			pixels = utils.get_pixels_from_pils(results)
+		if scale != 1:
+			if model_name == 'LANCZOS':
+				pil_images = utils.get_pils_from_pixels(pixels)
+				results = [img.resize((width, height), Image.Resampling.LANCZOS) for img in pil_images]
+				pixels = utils.get_pixels_from_pils(results)
+			else:
+				if scale > 1:
+					s = self.upscale_with_model(model_name, pixels)
+				pil_images = utils.get_pils_from_pixels(s)
+				results = [img.resize((width, height), Image.Resampling.LANCZOS) for img in pil_images]
+				pixels = utils.get_pixels_from_pils(results)
 
 		print('Hires SEED', bind.seed, bind.model)
 		latent = dict(samples=bind.vae.encode(pixels))
