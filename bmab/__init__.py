@@ -3,15 +3,17 @@ from bmab import override
 
 
 NODE_CLASS_MAPPINGS = {
-    'BMAB Basic': nodes.BMABBasic,
-    'BMAB Edge': nodes.BMABEdge,
-    'BMAB Text': nodes.BMABText,
     'BMAB Upscaler': nodes.BMABUpscale,
     'BMAB Save Image': nodes.BMABSaveImage,
     'BMAB Upscale With Model': nodes.BMABUpscaleWithModel,
     'BMAB LoRA Loader': nodes.BMABLoraLoader,
     'BMAB Prompt': nodes.BMABPrompt,
     'BMAB Google Gemini Prompt': nodes.BMABGoogleGemini,
+
+    # Basic
+    'BMAB Basic': nodes.BMABBasic,
+    'BMAB Edge': nodes.BMABEdge,
+    'BMAB Text': nodes.BMABText,
 
     # Resize
     'BMAB Resize By Person': nodes.BMABResizeByPerson,
@@ -69,9 +71,6 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'BMAB Basic': 'BMAB Basic',
-    'BMAB Edge': 'BMAB Edge',
-    'BMAB Text': 'BMAB Text',
     'BMAB DinoSam': 'BMAB DinoSam',
     'BMAB Upscaler': 'BMAB Upscaler',
     'BMAB Control Net': 'BMAB ControlNet',
@@ -80,6 +79,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB LoRA Loader': 'BMAB Lora Loader',
     'BMAB Prompt': 'BMAB Prompt',
     'BMAB Google Gemini Prompt': 'BMAB Google Gemini API',
+
+    # Preview
+    'BMAB Basic': 'BMAB Basic',
+    'BMAB Edge': 'BMAB Edge',
+    'BMAB Text': 'BMAB Text',
 
     # Resize
     'BMAB Resize By Person': 'BMAB Resize By Person',

@@ -242,11 +242,11 @@ class BMABText:
 			}
 		}
 
-	RETURN_TYPES = ('STRING', )
-	RETURN_NAMES = ('string', )
+	RETURN_TYPES = ('STRING',)
+	RETURN_NAMES = ('string',)
 	FUNCTION = 'export'
 
 	CATEGORY = 'BMAB/basic'
 
 	def export(self, text):
-		return (text, )
+		return (text,)

@@ -35,16 +35,15 @@ class BMABGoogleGemini:
 
 	CATEGORY = 'BMAB/toy'
 
-	def prompt(self, seed, prompt: str, text: str, api_key):
-		if self.last_seed is None or (self.last_seed is not None and self.last_seed != seed):
-			import google.generativeai as genai
-			genai.configure(api_key=api_key)
-			model = genai.GenerativeModel('gemini-pro')
-
-			text = text.strip()
-			response = model.generate_content(question.format(text=text))
-			self.last_seed = seed
+	def get_prompt(self, text, api_key):
+		import google.generativeai as genai
+		genai.configure(api_key=api_key)
+		model = genai.GenerativeModel('gemini-pro')
+		text = text.strip()
+		response = model.generate_content(question.format(text=text))
+		try:
 			self.last_prompt = response.text
+			print(response.text)
 			cache_path = os.path.join(os.path.dirname(bmab.__file__), '../resources/cache')
 			cache_file = os.path.join(cache_path, 'gemini.txt')
 			with open(cache_file, 'a', encoding='utf8') as f:
@@ -52,6 +51,15 @@ class BMABGoogleGemini:
 				f.write('\n')
 				f.write(self.last_prompt)
 				f.write('\n')
-		if self.last_prompt is not None and prompt.find('__prompt__') >= 0:
-			prompt = prompt.replace('__prompt__', self.last_prompt)
+		except:
+			print('ERROR reading API response', response)
+		return self.last_prompt
+
+	def prompt(self, seed, prompt: str, text: str, api_key):
+		if prompt.find('__prompt__') >= 0:
+			print(seed, self.last_seed)
+			if self.last_seed is None or self.last_seed != seed:
+				self.get_prompt(text, api_key)
+			if self.last_prompt is not None and prompt.find('__prompt__') >= 0:
+				prompt = prompt.replace('__prompt__', self.last_prompt)
 		return (prompt, )
