@@ -1,7 +1,7 @@
 [project]
 name = "comfyui_bmab"
 description = "BMAB for ComfyUI\n[w/comfyui-bmab is changed to comfyui_bmab. Remove 'custom_nodes/comyui-bmab' in your directory and then reinstall this.]"
-version = "1.0.0"
+version = "1.0.4"
 license = "LICENSE"
 dependencies = ["lightning", "segment_anything", "omegaconf", "ultralytics", "scikit-image", "huggingface_hub", "transformers>=4.39.1", "basicsr>=1.4.2", "blendmodes", "opencv-python", "urllib3"]
 
@@ -11,5 +11,5 @@ Repository = "https://github.com/portu-sim/comfyui_bmab"
 
 [tool.comfy]
 PublisherId = "portu-sim"
-DisplayName = "portu-sim"
+DisplayName = "comfyui_bmab"
 Icon = ""
