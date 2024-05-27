@@ -17,6 +17,7 @@ class BMABGoogleGemini:
 		super().__init__()
 		self.last_prompt = None
 		self.last_seed = None
+		self.last_text = None
 
 	@classmethod
 	def INPUT_TYPES(s):
@@ -57,8 +58,10 @@ class BMABGoogleGemini:
 
 	def prompt(self, seed, prompt: str, text: str, api_key):
 		if prompt.find('__prompt__') >= 0:
-			print(seed, self.last_seed)
-			if self.last_seed is None or self.last_seed != seed:
+			if self.last_seed != seed or self.last_text != text:
+				print(seed, self.last_seed, text, self.last_text)
+				self.last_text = text
+				self.last_seed = seed
 				self.get_prompt(text, api_key)
 			if self.last_prompt is not None and prompt.find('__prompt__') >= 0:
 				prompt = prompt.replace('__prompt__', self.last_prompt)

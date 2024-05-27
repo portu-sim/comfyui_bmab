@@ -68,6 +68,10 @@ NODE_CLASS_MAPPINGS = {
     # UTIL Nodes
     'BMAB Model To Bind': nodes.BMABModelToBind,
     'BMAB Conditioning To Bind': nodes.BMABConditioningToBind,
+
+    # Watermark
+    'BMAB Watermark': nodes.BMABWatermark,
+
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -138,5 +142,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     # UTIL Nodes
     'BMAB Model To Bind': 'BMAB Model To Bind',
     'BMAB Conditioning To Bind': 'BMAB Conditioning To Bind',
+
+    # Watermark
+    'BMAB Watermark': 'BMAB Watermark',
 }
 
