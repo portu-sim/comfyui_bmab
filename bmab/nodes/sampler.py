@@ -408,7 +408,7 @@ class BMABPrompt:
 				'bind': ('BMAB bind',),
 				'text': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'token_normalization': (['none', 'mean', 'length', 'length+mean'],),
-				'weight_interpretation': (['original', 'comfy', 'A1111', 'compel', 'comfy++', 'down_weight'],),
+				'weight_interpretation': (['original', 'sdxl', 'comfy', 'A1111', 'compel', 'comfy++', 'down_weight'],),
 			}
 		}
 
@@ -417,6 +417,19 @@ class BMABPrompt:
 	FUNCTION = 'prompt'
 
 	CATEGORY = 'BMAB/sampler'
+
+	def encode_sdxl(self, clip, text_g, text_l):
+		width, height, crop_w, crop_h, target_width, target_height = 1024, 1024, 0, 0, 1024, 1024
+		tokens = clip.tokenize(text_g)
+		tokens["l"] = clip.tokenize(text_l)["l"]
+		if len(tokens["l"]) != len(tokens["g"]):
+			empty = clip.tokenize("")
+			while len(tokens["l"]) < len(tokens["g"]):
+				tokens["l"] += empty["l"]
+			while len(tokens["l"]) > len(tokens["g"]):
+				tokens["g"] += empty["g"]
+		cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+		return [[cond, {"pooled_output": pooled, "width": width, "height": height, "crop_w": crop_w, "crop_h": crop_h, "target_width": target_width, "target_height": target_height}]]
 
 	def prompt(self, bind: BMABBind, text, token_normalization, weight_interpretation):
 
@@ -431,6 +444,9 @@ class BMABPrompt:
 			tokens = bind.clip.tokenize(prompt)
 			cond, pooled = bind.clip.encode_from_tokens(tokens, return_pooled=True)
 			bind.positive = [[cond, {'pooled_output': pooled}]]
+		elif weight_interpretation == 'sdxl':
+			prompt = utils.parse_prompt(text, bind.seed)
+			bind.positive = self.encode_sdxl(bind.clip, prompt, prompt)
 		else:
 			embeddings_final, pooled = advanced_encode(bind.clip, prompt, token_normalization, weight_interpretation, w_max=1.0, apply_to_pooled=False)
 			bind.positive = [[embeddings_final, {'pooled_output': pooled}]]
