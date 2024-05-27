@@ -1,4 +1,5 @@
 import os
+import random
 import time
 import bmab
 
@@ -10,6 +11,7 @@ from bmab.external.advanced_clip import advanced_encode
 question = '''
 make detailed prompt for stable diffusion using keyword "{text}" about scene, lighting, face, pose, clothes, background and colors in only 1 sentence. The sentence is describes very detailed. Do not say about human race.
 '''
+
 
 class BMABGoogleGemini:
 
@@ -23,10 +25,10 @@ class BMABGoogleGemini:
 	def INPUT_TYPES(s):
 		return {
 			'required': {
-				'seed': ('INT', {'default': 0, 'min': 0, 'max': 0xffffffffffffffff}),
 				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'text': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'api_key': ('STRING', {'multiline': False}),
+				'random_seed': ('INT', {'default': 0, 'min': 0, 'max': 65536, 'step': 1}),
 			}
 		}
 
@@ -56,13 +58,19 @@ class BMABGoogleGemini:
 			print('ERROR reading API response', response)
 		return self.last_prompt
 
-	def prompt(self, seed, prompt: str, text: str, api_key):
+	def prompt(self, prompt: str, text: str, api_key, random_seed=None, **kwargs):
+		print('seed', random_seed, kwargs)
 		if prompt.find('__prompt__') >= 0:
-			if self.last_seed != seed or self.last_text != text:
-				print(seed, self.last_seed, text, self.last_text)
+			if random_seed is None or self.last_seed != random_seed or self.last_text != text:
+				random_seed = random.randint(0, 65535)
+				print(random_seed, self.last_seed, text, self.last_text)
 				self.last_text = text
-				self.last_seed = seed
+				self.last_seed = random_seed
 				self.get_prompt(text, api_key)
 			if self.last_prompt is not None and prompt.find('__prompt__') >= 0:
 				prompt = prompt.replace('__prompt__', self.last_prompt)
-		return (prompt, )
+		else:
+			random_seed = random.randint(0, 65535)
+			print(random_seed, self.last_seed, text, self.last_text)
+			prompt = utils.parse_prompt(prompt, random_seed)
+		return {"ui": {"string": [str(random_seed), ]}, "result": (prompt,)}

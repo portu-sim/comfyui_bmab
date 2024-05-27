@@ -1,4 +1,4 @@
-from .basic import BMABBasic, BMABBind, BMABSaveImage, BMABEdge, BMABText
+from .basic import BMABBasic, BMABBind, BMABSaveImage, BMABEdge, BMABText, BMABPreviewText
 from .binder import BMABBind, BMABLoraBind
 from .cnloader import BMABControlNet, BMABControlNetOpenpose, BMABControlNetIPAdapter
 from .detailers import BMABFaceDetailer, BMABPersonDetailer, BMABSimpleHandDetailer, BMABSubframeHandDetailer

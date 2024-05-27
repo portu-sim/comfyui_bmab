@@ -14,6 +14,7 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Basic': nodes.BMABBasic,
     'BMAB Edge': nodes.BMABEdge,
     'BMAB Text': nodes.BMABText,
+    'BMAB Preview Text': nodes.BMABPreviewText,
 
     # Resize
     'BMAB Resize By Person': nodes.BMABResizeByPerson,
@@ -88,6 +89,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Basic': 'BMAB Basic',
     'BMAB Edge': 'BMAB Edge',
     'BMAB Text': 'BMAB Text',
+    'BMAB Preview Text': 'BMAB Preview Text',
 
     # Resize
     'BMAB Resize By Person': 'BMAB Resize By Person',

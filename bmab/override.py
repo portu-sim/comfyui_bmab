@@ -12,4 +12,5 @@ def get_output_directory():
 	return full_output_folder
 
 
-folder_paths.get_output_directory = get_output_directory
+def override():
+	folder_paths.get_output_directory = get_output_directory
