@@ -4,8 +4,6 @@ import time
 import bmab
 
 from bmab import utils
-from bmab.nodes.binder import BMABBind
-from bmab.external.advanced_clip import advanced_encode
 
 
 question = '''
@@ -59,11 +57,9 @@ class BMABGoogleGemini:
 
 	def prompt(self, prompt: str, text: str, api_key, random_seed=None, **kwargs):
 		random_seed = random.randint(0, 65535)
-		print(random_seed, text, self.last_text)
 		if prompt.find('__prompt__') >= 0:
 			if self.last_text != text:
 				random_seed = random.randint(0, 65535)
-				print(random_seed, text, self.last_text)
 				self.last_text = text
 				self.get_prompt(text, api_key)
 			prompt = prompt.replace('__prompt__', self.last_prompt)
