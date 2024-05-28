@@ -69,6 +69,7 @@ NODE_CLASS_MAPPINGS = {
     # UTIL Nodes
     'BMAB Model To Bind': nodes.BMABModelToBind,
     'BMAB Conditioning To Bind': nodes.BMABConditioningToBind,
+    'BMAB Noise Generator': nodes.BMABNoiseGenerator,
 
     # Watermark
     'BMAB Watermark': nodes.BMABWatermark,
@@ -144,6 +145,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     # UTIL Nodes
     'BMAB Model To Bind': 'BMAB Model To Bind',
     'BMAB Conditioning To Bind': 'BMAB Conditioning To Bind',
+    'BMAB Noise Generator': 'BMAB Noise Generator',
 
     # Watermark
     'BMAB Watermark': 'BMAB Watermark',

@@ -1,8 +1,10 @@
 import numpy as np
+import cv2
 
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFilter
+from PIL import ImageOps
 
 import nodes
 import folder_paths
@@ -346,3 +348,54 @@ class BMABLoadImage(nodes.LoadImage):
 	CATEGORY = 'BMAB/imaging'
 
 	RETURN_TYPES = ('IMAGE', 'MASK')
+
+
+
+class BMABEdge:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {'required': {
+			'pixels': ('IMAGE',),
+			'threshold1': ('FLOAT', {'default': 50.0, 'min': 1.0, 'max': 255, 'step': 1}),
+			'threshold2': ('FLOAT', {'default': 200.0, 'min': 1.0, 'max': 255, 'step': 1}),
+			'strength': ('FLOAT', {'default': 0.5, 'min': 0, 'max': 1.0, 'step': 0.05}),
+		},
+			'hidden': {'unique_id': 'UNIQUE_ID'}
+		}
+
+	RETURN_TYPES = ('IMAGE',)
+	RETURN_NAMES = ('image',)
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/basic'
+
+	@staticmethod
+	def edge_flavor(pil, canny_th1: int, canny_th2: int, strength: float):
+		numpy_image = np.array(pil)
+		base = cv2.cvtColor(numpy_image, cv2.COLOR_RGB2BGR)
+		arcanny = cv2.Canny(base, canny_th1, canny_th2)
+		canny = Image.fromarray(arcanny)
+		canny = ImageOps.invert(canny)
+
+		mdata = canny.getdata()
+		ndata = pil.getdata()
+
+		newdata = []
+		for idx in range(0, len(mdata)):
+			if mdata[idx] == 0:
+				newdata.append((0, 0, 0))
+			else:
+				newdata.append(ndata[idx])
+
+		newbase = Image.new('RGB', pil.size)
+		newbase.putdata(newdata)
+		return Image.blend(pil, newbase, alpha=strength).convert('RGB')
+
+	def process(self, pixels, threshold1, threshold2, strength, unique_id):
+		results = []
+		for bgimg in utils.get_pils_from_pixels(pixels):
+			bgimg = self.edge_flavor(bgimg, threshold1, threshold2, strength)
+			results.append(bgimg)
+		pixels = utils.pil2tensor(results)
+		return (pixels,)
+

@@ -18,7 +18,6 @@ class BMABGoogleGemini:
 	def __init__(self) -> None:
 		super().__init__()
 		self.last_prompt = None
-		self.last_seed = None
 		self.last_text = None
 
 	@classmethod
@@ -29,7 +28,7 @@ class BMABGoogleGemini:
 				'text': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'api_key': ('STRING', {'multiline': False}),
 				'random_seed': ('INT', {'default': 0, 'min': 0, 'max': 65536, 'step': 1}),
-			}
+			},
 		}
 
 	RETURN_TYPES = ('STRING',)
@@ -59,18 +58,14 @@ class BMABGoogleGemini:
 		return self.last_prompt
 
 	def prompt(self, prompt: str, text: str, api_key, random_seed=None, **kwargs):
-		print('seed', random_seed, kwargs)
+		random_seed = random.randint(0, 65535)
+		print(random_seed, text, self.last_text)
 		if prompt.find('__prompt__') >= 0:
-			if random_seed is None or self.last_seed != random_seed or self.last_text != text:
+			if self.last_text != text:
 				random_seed = random.randint(0, 65535)
-				print(random_seed, self.last_seed, text, self.last_text)
+				print(random_seed, text, self.last_text)
 				self.last_text = text
-				self.last_seed = random_seed
 				self.get_prompt(text, api_key)
-			if self.last_prompt is not None and prompt.find('__prompt__') >= 0:
-				prompt = prompt.replace('__prompt__', self.last_prompt)
-		else:
-			random_seed = random.randint(0, 65535)
-			print(random_seed, self.last_seed, text, self.last_text)
-			prompt = utils.parse_prompt(prompt, random_seed)
-		return {"ui": {"string": [str(random_seed), ]}, "result": (prompt,)}
+			prompt = prompt.replace('__prompt__', self.last_prompt)
+		result = utils.parse_prompt(prompt, random_seed)
+		return {"ui": {"string": [str(random_seed), ]}, "result": (result,)}
