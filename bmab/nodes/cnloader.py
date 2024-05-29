@@ -157,6 +157,7 @@ class BMABControlNetOpenpose(BMABControlNet):
 					'detect_hand': (["enable", "disable"], {"default": "enable"}),
 					'detect_body': (["enable", "disable"], {"default": "enable"}),
 					'detect_face': (["enable", "disable"], {"default": "enable"}),
+					'fit_to_latent': (["enable", "disable"], {"default": "enable"}),
 					'image': (files, {'image_upload': True}),
 				}
 			}
@@ -183,11 +184,21 @@ class BMABControlNetOpenpose(BMABControlNet):
 	def apply_controlnet(self, bind: BMABBind, control_net_name, strength, start_percent, end_percent, image, **kwargs):
 		from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
 		detect_hand, detect_body, detect_face = kwargs.get('detect_hand'), kwargs.get('detect_body'), kwargs.get('detect_face')
-		c = (image, detect_hand, detect_body, detect_face)
+		fit_to_latent = kwargs.get('fit_to_latent', 'enable') == 'enable'
+		c = (image, detect_hand, detect_body, detect_face, fit_to_latent)
 		if image is None and 'image_in' in kwargs:
 			return super().apply_controlnet(bind, control_net_name, strength, start_percent, end_percent, image, **kwargs)
 		if self.changed(c):
 			bgimg, _ = self.load_image(image)
+
+			if fit_to_latent:
+				w, h = utils.get_shape(bind.latent_image)
+				print('Pose image fit to ', w, h)
+				results = []
+				for img in utils.get_pils_from_pixels(bgimg):
+					results.append(utils.resize_and_fill(img, w, h, fill_black=True))
+				bgimg = utils.get_pixels_from_pils(results)
+
 			prepro = OpenPose_Preprocessor()
 			r = prepro.estimate_pose(bgimg, detect_hand, detect_body, detect_face, kwargs.get('resolution'))
 			pixels = r['result'][0]
