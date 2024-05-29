@@ -2,7 +2,6 @@ import comfy
 import nodes
 import math
 import numpy as np
-from collections.abc import Iterable
 
 from PIL import Image
 from PIL import ImageDraw
@@ -10,6 +9,7 @@ from PIL import ImageFilter
 
 from bmab import utils
 from bmab import process
+from bmab.utils import grdino
 from bmab.utils import yolo, sam
 from bmab.nodes.binder import BMABBind
 from bmab.nodes.cnloader import BMABControlNetOpenpose
@@ -274,39 +274,22 @@ class BMABPersonDetailer(BMABDetailer):
 class BMABSimpleHandDetailer(BMABDetailer):
 	@classmethod
 	def INPUT_TYPES(s):
-		try:
-			from bmab.utils import grdino
-			return {
-				'required': {
-					'bind': ('BMAB bind',),
-					'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
-					'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-					'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
-					'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
-					'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
-					'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
-					'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
-					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-				},
-				'optional': {
-					'image': ('IMAGE',),
-					'lora': ('BMAB lora',)
-				}
-			}
-		except:
-			pass
-
 		return {
 			'required': {
-				'text': (
-					'STRING',
-					{
-						'default': 'Cannot Load GroundingDINO. To use this node, install GroudingDINO first.',
-						'multiline': True,
-						'dynamicPrompts': True
-					}
-				),
+				'bind': ('BMAB bind',),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
+				'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
+				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
+				'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+				'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+			},
+			'optional': {
+				'image': ('IMAGE',),
+				'lora': ('BMAB lora',)
 			}
 		}
 
@@ -324,14 +307,6 @@ class BMABSimpleHandDetailer(BMABDetailer):
 		return utils.tensor2pil(latent)
 
 	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, image=None, lora=None):
-		try:
-			from bmab.utils import grdino
-		except:
-			print('-' * 30)
-			print('You should install GroudingDINO on your system.')
-			print('-' * 30)
-			raise
-
 		pixels = bind.pixels if image is None else image
 
 		results = []
@@ -360,7 +335,7 @@ class BMABSimpleHandDetailer(BMABDetailer):
 				'height': height,
 			}
 
-			boxes, logits, phrases = grdino.dino_predict(bgimg, 'hand', 0.35, 0.25)
+			boxes, logits, phrases = grdino.predict(bgimg, 'a hand.', box_threahold=0.35, text_threshold=0.25)
 			for idx, (box, logit, phrase) in enumerate(zip(boxes, logits, phrases)):
 				print(phrase)
 				if phrase != 'hand':
@@ -383,40 +358,23 @@ class BMABSimpleHandDetailer(BMABDetailer):
 class BMABSubframeHandDetailer(BMABDetailer):
 	@classmethod
 	def INPUT_TYPES(s):
-		try:
-			from bmab.utils import grdino
-			return {
-				'required': {
-					'bind': ('BMAB bind',),
-					'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
-					'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
-					'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
-					'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
-					'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
-					'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
-					'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
-					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
-					'squeeze': (('disable', 'enable'),),
-				},
-				'optional': {
-					'image': ('IMAGE',),
-					'lora': ('BMAB lora',)
-				}
-			}
-		except:
-			pass
-
 		return {
 			'required': {
-				'text': (
-					'STRING',
-					{
-						'default': 'Cannot Load GroundingDINO. To use this node, install GroudingDINO first.',
-						'multiline': True,
-						'dynamicPrompts': True
-					}
-				),
+				'bind': ('BMAB bind',),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
+				'denoise': ('FLOAT', {'default': 0.45, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+				'padding': ('INT', {'default': 32, 'min': 8, 'max': 128, 'step': 8}),
+				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 32, 'step': 1}),
+				'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+				'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+				'squeeze': (('disable', 'enable'),),
+			},
+			'optional': {
+				'image': ('IMAGE',),
+				'lora': ('BMAB lora',)
 			}
 		}
 
@@ -465,11 +423,10 @@ class BMABSubframeHandDetailer(BMABDetailer):
 
 	def process_image(self, bind: BMABBind, bgimg: Image, squeeze, img2img: dict):
 
-		text_prompt = "person . head . face . hand ."
-		from bmab.utils import grdino
+		text_prompt = "a human. a hand. a head. a face."
 
 		hand_boxes = []
-		boxes, logits, phrases = grdino.dino_predict(bgimg, text_prompt, 0.35, 0.25)
+		boxes, logits, phrases = grdino.predict(bgimg, text_prompt, box_threahold=0.35, text_threshold=0.25)
 		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'person']
 		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'hand']
 
@@ -497,14 +454,6 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		return bgimg, bounding_box
 
 	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, image=None, lora=None):
-		try:
-			from bmab.utils import grdino
-		except:
-			print('-' * 30)
-			print('You should install GroudingDINO on your system.')
-			print('-' * 30)
-			raise
-
 		squeeze = squeeze == 'enable'
 		pixels = bind.pixels if image is None else image
 
@@ -545,7 +494,6 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 	@classmethod
 	def INPUT_TYPES(s):
 		try:
-			from bmab.utils import grdino
 			from comfyui_controlnet_aux.node_wrappers.dwpose import DWPose_Preprocessor
 			from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
 
@@ -687,12 +635,10 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 		return bgimg, bounding_box, cbx
 
 	def process_image(self, bind: BMABBind, bgimg: Image, squeeze, img2img: dict):
-
-		text_prompt = "person . head . face . hand ."
-		from bmab.utils import grdino
+		text_prompt = "a human. a hand. a head. a face."
 
 		hand_boxes = []
-		boxes, logits, phrases = grdino.dino_predict(bgimg, text_prompt, 0.35, 0.25)
+		boxes, logits, phrases = grdino.predict(bgimg, text_prompt, box_threahold=0.35, text_threshold=0.25)
 		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'person']
 		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'hand']
 
@@ -720,14 +666,6 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 		return bgimg, bounding_box
 
 	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, image=None, lora=None):
-		try:
-			from bmab.utils import grdino
-		except:
-			print('-' * 30)
-			print('You should install GroudingDINO on your system.')
-			print('-' * 30)
-			raise
-
 		squeeze = squeeze == 'enable'
 		pixels = bind.pixels if image is None else image
 
