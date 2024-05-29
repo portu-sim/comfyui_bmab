@@ -427,8 +427,8 @@ class BMABSubframeHandDetailer(BMABDetailer):
 
 		hand_boxes = []
 		boxes, logits, phrases = grdino.predict(bgimg, text_prompt, box_threahold=0.35, text_threshold=0.25)
-		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'person']
-		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'hand']
+		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'a human']
+		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'a hand']
 
 		print('Person', len(persons))
 		print('Hand', len(hands))
@@ -639,8 +639,8 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 
 		hand_boxes = []
 		boxes, logits, phrases = grdino.predict(bgimg, text_prompt, box_threahold=0.35, text_threshold=0.25)
-		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'person']
-		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'hand']
+		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'a human']
+		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'a hand']
 
 		print('Person', len(persons))
 		print('Hand', len(hands))
