@@ -13,6 +13,7 @@ from torch.hub import download_url_to_file, get_dir
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFilter
+from .color import get_color_name
 
 
 def pil2tensor(image):
@@ -301,6 +302,19 @@ model_path = os.path.join(os.path.dirname(__file__), '../../models')
 
 
 def parse_prompt(prompt: str, seed):
+	idx = 0
+	for i in range(0, 100):
+		start = prompt.find('#', idx)
+		if start < 0:
+			break
+		end = prompt.find(' ', start)
+		if end < 0:
+			break
+		color_code = prompt[start:end]
+		code, name, _ = get_color_name(color_code)
+		idx = end
+		prompt = prompt[:start] + name + prompt[end:]
+
 	idx = 0
 	for i in range(0, 100):
 		start = prompt.find('__', idx)
