@@ -340,6 +340,22 @@ def parse_prompt(prompt: str, seed):
 	return prompt
 
 
+def parse_color(prompt: str):
+	idx = 0
+	for i in range(0, 100):
+		start = prompt.find('#', idx)
+		if start < 0:
+			break
+		end = prompt.find(' ', start)
+		if end < 0:
+			break
+		color_code = prompt[start:end]
+		code, name, _ = get_color_name(color_code)
+		idx = end
+		prompt = prompt[:start] + name + prompt[end:]
+	return prompt
+
+
 def get_cache_path(filename):
 	return os.path.join(resource_path, f'cache/{filename}')
 

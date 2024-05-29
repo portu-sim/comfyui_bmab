@@ -199,6 +199,7 @@ class BMABText:
 	CATEGORY = 'BMAB/basic'
 
 	def export(self, text):
+		text = utils.parse_color(text)
 		return (text,)
 
 
