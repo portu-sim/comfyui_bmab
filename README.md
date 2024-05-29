@@ -31,8 +31,13 @@ You will need to install a total of three custom nodes.
   * https://github.com/cubiq/ComfyUI_IPAdapter_plus.git
   * cubiq, Thanks for excellent code.
 
-And be sure to install <span style="color:red"> GroundingDINO </span>  at the bottom.
 
+### Grounding DINO Installation
+
+Transfomer v4.40.0 has Grounding DINO implementation.   
+https://github.com/huggingface/transformers/releases/tag/v4.40.0
+Now BMAB use transformer for detecting object.
+No installation required.
 
 ## Install Manually
 
@@ -86,65 +91,6 @@ git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git
 cd ComfyUI_IPAdapter_plus
 pip install -r requirements.txt
 cd ..
-```
-
-
-## Install GroundingDINO
-
-comfyui_bmab requires GroundingDINO for some detection processing.   
-However, this cannot be installed using pip, so follow the following procedure.
-
-### Windows - CompyUI Portable User
-
-```commandline
-python_embeded\python.exe -m pip install https://github.com/portu-sim/GroundingDINO/releases/download/groundingdino-0.1.0/groundingdino-0.1.0.torch2.3.0.cu121-cp311-cp311-win_amd64.whl
-```
-
-### Windows
-
-```commandline
-pip3 install https://github.com/portu-sim/GroundingDINO/releases/download/groundingdino-0.1.0/groundingdino-0.1.0.torch2.3.0.cu121-cp311-cp311-win_amd64.whl
-```
-
-### Linux
-
-visit https://github.com/Bing-su/GroundingDINO/releases
-Copy link for suitable package URL.
-
-You can check versions in python
-
-```commandline
->>>
->>> import sys
->>> sys.version
-'3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]'
->>> import torch
->>> torch.__version__
-'2.1.2+cu121'
->>>
-```
-
-
-Windows, Pytorch 2.2, Cuda 12.1, Python 3.10
-
-```commandline
-pip install https://github.com/Bing-su/GroundingDINO/releases/download/v24.5.19/groundingdino-24.5.19+torch2.2.2.cu121-cp310-cp310-win_amd64.whl
-```
-
-Windows, Pytorch 2.3, Cuda 12.1, Python 3.10
-
-```commandline
-pip install https://github.com/Bing-su/GroundingDINO/releases/download/v24.5.19/groundingdino-24.5.19+torch2.3.0.cu121-cp310-cp310-win_amd64.whl
-```
-
-### MacOS or Unknown
-
-The installation method below is most likely to work with the CPU. So it can be very slow.
-
-```commandline
-git clone https://github.com/IDEA-Research/GroundingDINO.git
-cd GroundingDINO
-pip install -e .
 ```
 
 

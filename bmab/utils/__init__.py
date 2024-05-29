@@ -450,3 +450,9 @@ def box_intersection(rect1, rect2):
 
 def is_samebox(box1, box2):
 	return box1[0] == box2[0] and box1[1] == box2[1] and box1[2] == box2[2] and box1[3] == box2[3]
+
+
+def get_shape(latent):
+	la = latent["samples"]
+	_1, _2, h, w = la.shape
+	return w * 8, h * 8

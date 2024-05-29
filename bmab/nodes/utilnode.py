@@ -106,15 +106,9 @@ class BMABNoiseGenerator:
 
 	def generate(self, width, height, bind: BMABBind=None, latent=None):
 		if bind is not None:
-			la = bind.latent_image["samples"]
-			_1, _2, h, w = la.shape
-			width = w * 8
-			height = h * 8
+			width, height = utils.get_shape(bind.latent_image)
 		if latent is not None:
-			la = latent["samples"]
-			_1, _2, h, w = la.shape
-			width = w * 8
-			height = h * 8
+			width, height = utils.get_shape(latent)
 
 		cache_path = os.path.join(os.path.dirname(bmab.__file__), '../resources/cache')
 		filename = f'noise_{width}_{height}.png'
