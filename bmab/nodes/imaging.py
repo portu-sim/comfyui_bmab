@@ -321,15 +321,19 @@ class BMABMasksToImages:
 
 	def mask_to_image(self, masks):
 		pils = []
-		for _masks in masks:
-			w, h = _masks.shape[-1], _masks.shape[-2]
-			mask = Image.new('L', (w, h), 0)
-			for pil_mask in utils.get_pils_from_pixels(_masks):
-				mask.paste(pil_mask, (0, 0), mask=pil_mask)
-			pils.append(mask)
-		masks = utils.get_pixels_from_pils(pils)
-		for mask in masks:
-			mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
+
+		if not isinstance(masks, list):
+			masks.reshape((-1, 1, masks.shape[-2], masks.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
+		else:
+			for _masks in masks:
+				w, h = _masks.shape[-1], _masks.shape[-2]
+				mask = Image.new('L', (w, h), 0)
+				for pil_mask in utils.get_pils_from_pixels(_masks):
+					mask.paste(pil_mask, (0, 0), mask=pil_mask)
+				pils.append(mask)
+			masks = utils.get_pixels_from_pils(pils)
+			for mask in masks:
+				mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
 		return (masks, )
 
 

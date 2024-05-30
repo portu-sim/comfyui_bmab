@@ -371,6 +371,8 @@ class BMABSubframeHandDetailer(BMABDetailer):
 				'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 				'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 				'squeeze': (('disable', 'enable'),),
+				'box_threshold': ('FLOAT', {'default': 0.35, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+				'text_threshold': ('FLOAT', {'default': 0.25, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 			},
 			'optional': {
 				'image': ('IMAGE',),
@@ -421,12 +423,12 @@ class BMABSubframeHandDetailer(BMABDetailer):
 
 		return bgimg, cbx
 
-	def process_image(self, bind: BMABBind, bgimg: Image, squeeze, img2img: dict):
+	def process_image(self, bind: BMABBind, bgimg: Image, squeeze, box_threshold, text_threshold, img2img: dict):
 
 		text_prompt = "a human. a hand. a head. a face."
 
 		hand_boxes = []
-		boxes, logits, phrases = grdino.predict(bgimg, text_prompt, box_threahold=0.35, text_threshold=0.25)
+		boxes, logits, phrases = grdino.predict(bgimg, text_prompt, box_threahold=box_threshold, text_threshold=text_threshold)
 		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'a human']
 		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'a hand']
 
@@ -453,7 +455,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 
 		return bgimg, bounding_box
 
-	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, image=None, lora=None):
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, box_threshold, text_threshold, image=None, lora=None):
 		squeeze = squeeze == 'enable'
 		pixels = bind.pixels if image is None else image
 
@@ -480,7 +482,7 @@ class BMABSubframeHandDetailer(BMABDetailer):
 		bbox_results = []
 		for bgimg in utils.get_pils_from_pixels(pixels):
 			bgimg = bgimg.convert('RGB')
-			result, bbox_result = self.process_image(bind, bgimg, squeeze, img2img)
+			result, bbox_result = self.process_image(bind, bgimg, squeeze, box_threshold, text_threshold, img2img)
 			results.append(result)
 			bbox_results.append(bbox_result)
 
@@ -510,6 +512,8 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 					'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 					'height': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
 					'squeeze': (('disable', 'enable'),),
+					'box_threshold': ('FLOAT', {'default': 0.35, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+					'text_threshold': ('FLOAT', {'default': 0.25, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 				},
 				'optional': {
 					'image': ('IMAGE',),
@@ -634,11 +638,11 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 
 		return bgimg, bounding_box, cbx
 
-	def process_image(self, bind: BMABBind, bgimg: Image, squeeze, img2img: dict):
+	def process_image(self, bind: BMABBind, bgimg: Image, squeeze, box_threshold, text_threshold, img2img: dict):
 		text_prompt = "a human. a hand. a head. a face."
 
 		hand_boxes = []
-		boxes, logits, phrases = grdino.predict(bgimg, text_prompt, box_threahold=0.35, text_threshold=0.25)
+		boxes, logits, phrases = grdino.predict(bgimg, text_prompt, box_threahold=box_threshold, text_threshold=text_threshold)
 		persons = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'a human']
 		hands = [tuple(int(x) for x in box) for box, phrase in zip(boxes, phrases) if phrase == 'a hand']
 
@@ -665,7 +669,7 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 
 		return bgimg, bounding_box
 
-	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, image=None, lora=None):
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, squeeze, box_threshold, text_threshold, image=None, lora=None):
 		squeeze = squeeze == 'enable'
 		pixels = bind.pixels if image is None else image
 
@@ -692,7 +696,7 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 		bbox_results = []
 		for bgimg in utils.get_pils_from_pixels(pixels):
 			bgimg = bgimg.convert('RGB')
-			result, bbox_result = self.process_image(bind, bgimg, squeeze, img2img)
+			result, bbox_result = self.process_image(bind, bgimg, squeeze, box_threshold, text_threshold, img2img)
 			results.append(result)
 			bbox_results.append(bbox_result)
 
@@ -763,18 +767,28 @@ class BMABDetailAnything(BMABDetailer):
 			'height': height,
 		}
 
-		images = utils.get_pils_from_pixels(pixels)
 		results = []
-		for image, _masks in zip(images, masks):
-			for (idx, m) in enumerate(_masks):
-				i = 255. * m.cpu().numpy().squeeze()
-				pil_mask = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-				box = pil_mask.getbbox()
-				x1, y1, x2, y2 = tuple(int(x) for x in box)
-				if limit != 0 and idx >= limit:
-					break
-				image = process.process_img2img_with_mask(bind, image, img2img, box=(x1, y1, x2, y2))
+		if not isinstance(masks, list):
+			i = 255. * masks.cpu().numpy().squeeze()
+			pil_mask = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+			box = pil_mask.getbbox()
+			x1, y1, x2, y2 = tuple(int(x) for x in box)
+			images = utils.get_pils_from_pixels(pixels)
+			image = images[0]
+			image = process.process_img2img_with_mask(bind, image, img2img, box=(x1, y1, x2, y2))
 			results.append(image)
+		else:
+			images = utils.get_pils_from_pixels(pixels)
+			for image, _masks in zip(images, masks):
+				for (idx, m) in enumerate(_masks):
+					i = 255. * m.cpu().numpy().squeeze()
+					pil_mask = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+					box = pil_mask.getbbox()
+					x1, y1, x2, y2 = tuple(int(x) for x in box)
+					if limit != 0 and idx >= limit:
+						break
+					image = process.process_img2img_with_mask(bind, image, img2img, box=(x1, y1, x2, y2))
+				results.append(image)
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
