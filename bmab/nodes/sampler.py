@@ -339,9 +339,10 @@ class BMABKSamplerHiresFixWithUpscaler:
 		return out
 
 	def upscale_with_model(self, model_name, pixels):
-		device = model_management.get_torch_device()
 		upscale_model = self.load_model(model_name)
-		memory_required = model_management.module_size(upscale_model)
+		device = model_management.get_torch_device()
+
+		memory_required = model_management.module_size(upscale_model.model)
 		memory_required += (512 * 512 * 3) * pixels.element_size() * max(upscale_model.scale, 1.0) * 384.0  # The 384.0 is an estimate of how much some of these models take, TODO: make it more accurate
 		memory_required += pixels.nelement() * pixels.element_size()
 		model_management.free_memory(memory_required, device)
@@ -364,8 +365,9 @@ class BMABKSamplerHiresFixWithUpscaler:
 				if tile < 128:
 					raise e
 
-		upscale_model.cpu()
-		return torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
+		upscale_model.to("cpu")
+		s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
+		return (s,)
 
 	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, model_name, scale, width, height,  image=None, lora: BMABLoraBind = None):
 		pixels = bind.pixels if image is None else image
