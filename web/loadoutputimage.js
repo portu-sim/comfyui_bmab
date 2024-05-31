@@ -21,7 +21,12 @@ app.registerExtension({
                         node.imgs = [img];
                         app.graph.setDirtyCanvas(true);
                     };
-                    img.src = api.apiURL(`/view?filename=${name}&type=output${app.getRandParam()}`);
+
+                    const split = name.split('/');
+                    const subdir = split.length > 1 ? split[0] : '';
+                    const fileName = split[split.length - 1];
+
+                    img.src = api.apiURL(`/view?filename=${fileName}&subfolder=${subdir}&type=output${app.getRandParam()}`);
                     node.setSizeForImage?.();
                 }
 

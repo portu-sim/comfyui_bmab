@@ -1,6 +1,8 @@
 import os
 import math
 import json
+import glob
+import time
 import numpy as np
 import folder_paths
 from comfy.cli_args import args
@@ -124,14 +126,15 @@ class BMABSaveImage:
 	def __init__(self):
 		self.output_dir = folder_paths.get_output_directory()
 		self.type = 'output'
-		self.prefix_append = ''
 		self.compress_level = 4
 
 	@classmethod
 	def INPUT_TYPES(s):
 		return {
 			'required': {
-				'filename_prefix': ('STRING', {'default': 'ComfyUI'})
+				'filename_prefix': ('STRING', {'default': 'bmab'}),
+				'format': (['png', 'jpg'], ),
+				'use_date': (['disable', 'enable'], )
 			},
 			'hidden': {
 				'prompt': 'PROMPT', 'extra_pnginfo': 'EXTRA_PNGINFO'
@@ -149,13 +152,46 @@ class BMABSaveImage:
 
 	CATEGORY = 'BMAB/basic'
 
-	def save_images(self, filename_prefix='ComfyUI', prompt=None, extra_pnginfo=None, bind: BMABBind = None, images=None):
+	@staticmethod
+	def get_file_sequence(prefix, subdir):
+		output_dir = os.path.normpath(os.path.join(folder_paths.get_output_directory(), subdir))
+		find_path = os.path.join(output_dir, f'{prefix}*')
+		sequence = 0
+		for f in glob.glob(find_path):
+			filename = os.path.basename(f)
+			split_name = filename[len(prefix)+1:].replace('.', '_').split('_')
+			try:
+				file_sequence = int(split_name[0])
+			except:
+				continue
+			if file_sequence > sequence:
+				sequence = file_sequence
+		return sequence + 1
+
+	@staticmethod
+	def get_sub_directory(use_date):
+		if not use_date:
+			return ''
+
+		dd = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+		full_output_folder = os.path.join(folder_paths.output_directory, dd)
+		print(full_output_folder)
+		if not os.path.exists(full_output_folder):
+			os.mkdir(full_output_folder)
+		return dd
+
+	def save_images(self, filename_prefix='bmab', format='png', use_date='disable', prompt=None, extra_pnginfo=None, bind: BMABBind = None, images=None):
 		if images is None:
 			images = bind.pixels
-		filename_prefix += self.prefix_append
-		full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0])
+		output_dir = folder_paths.get_output_directory()
 		results = list()
+		use_date = use_date == 'enable'
+
+		subdir = self.get_sub_directory(use_date)
+		sequence = self.get_file_sequence(filename_prefix, subdir)
+
 		for (batch_number, image) in enumerate(images):
+
 			i = 255. * image.cpu().numpy()
 			img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 			metadata = None
@@ -167,18 +203,31 @@ class BMABSaveImage:
 					for x in extra_pnginfo:
 						metadata.add_text(x, json.dumps(extra_pnginfo[x]))
 
-			filename_with_batch_num = filename.replace('%batch_num%', str(batch_number))
-			if bind is not None:
-				file = f'{filename_with_batch_num}_{counter:05}_{bind.seed}_.png'
+			if batch_number > 0:
+				filename = f'{filename_prefix}_{sequence:05}_{batch_number}'
 			else:
-				file = f'{filename_with_batch_num}_{counter:05}_.png'
-			img.save(os.path.join(full_output_folder, file), pnginfo=metadata, compress_level=self.compress_level)
+				filename = f'{filename_prefix}_{sequence:05}'
+
+			if bind is not None:
+				file = f'{filename}_{bind.seed}.{format}'
+			else:
+				file = f'{filename}.{format}'
+
+			if use_date:
+				output_dir = os.path.join(output_dir, subdir)
+
+			if format == 'png':
+				img.save(os.path.join(output_dir, file), pnginfo=metadata, compress_level=self.compress_level)
+			else:
+				img.save(os.path.join(output_dir, file))
+
 			results.append({
 				'filename': file,
-				'subfolder': subfolder,
+				'subfolder': subdir,
 				'type': self.type
 			})
-			counter += 1
+
+			sequence += 1
 
 		return {'ui': {'images': results}}
 

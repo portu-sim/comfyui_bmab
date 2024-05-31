@@ -4,6 +4,7 @@ import time
 import bmab
 
 from bmab import utils
+from server import PromptServer
 
 
 question = '''
@@ -53,6 +54,9 @@ class BMABGoogleGemini:
 				f.write('\n')
 		except:
 			print('ERROR reading API response', response)
+			self.last_text = None
+			PromptServer.instance.send_sync("stop-iteration", {})
+
 		return self.last_prompt
 
 	def prompt(self, prompt: str, text: str, api_key, random_seed=None, **kwargs):
@@ -62,6 +66,8 @@ class BMABGoogleGemini:
 				random_seed = random.randint(0, 65535)
 				self.last_text = text
 				self.get_prompt(text, api_key)
+			if self.last_prompt is None:
+				PromptServer.instance.send_sync("stop-iteration", {})
 			prompt = prompt.replace('__prompt__', self.last_prompt)
 		result = utils.parse_prompt(prompt, random_seed)
 		return {"ui": {"string": [str(random_seed), ]}, "result": (result,)}
