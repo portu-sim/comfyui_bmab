@@ -8,4 +8,4 @@ transformers>=4.40.0
 blendmodes
 opencv-python
 urllib3
-
+pillow
