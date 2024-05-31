@@ -9,12 +9,12 @@ app.registerExtension({
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if (nodeData.name === "BMAB Load Output Image") {
 
-            const onConfigure = nodeType.prototype.onConfigure;
-            nodeType.prototype.onConfigure = function (texts) {
-                onConfigure?.apply(this, arguments);
+
+            const onNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                onNodeCreated?.apply(this, arguments);
 
                 const node = this
-                const imageWidget = node.widgets.find((w) => w.name === "image");
                 function showImage(name) {
                     const img = new Image();
                     img.onload = () => {
@@ -29,6 +29,8 @@ app.registerExtension({
                     img.src = api.apiURL(`/view?filename=${fileName}&subfolder=${subdir}&type=output${app.getRandParam()}`);
                     node.setSizeForImage?.();
                 }
+
+                const imageWidget = node.widgets.find((w) => w.name === "image");
 
                 const cb = this.callback;
                 imageWidget.callback = function () {
