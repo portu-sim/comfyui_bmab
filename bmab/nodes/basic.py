@@ -188,6 +188,10 @@ class BMABSaveImage:
 		use_date = use_date == 'enable'
 
 		subdir = self.get_sub_directory(use_date)
+		prefix_split = filename_prefix.split('/')
+		if len(prefix_split) != 1:
+			filename_prefix = prefix_split[-1]
+			subdir = os.path.join(subdir, '/'.join(prefix_split[:-1]))
 		sequence = self.get_file_sequence(filename_prefix, subdir)
 
 		for (batch_number, image) in enumerate(images):
@@ -215,6 +219,9 @@ class BMABSaveImage:
 
 			if use_date:
 				output_dir = os.path.join(output_dir, subdir)
+
+			if not os.path.exists(output_dir):
+				os.mkdir(output_dir)
 
 			if format == 'png':
 				img.save(os.path.join(output_dir, file), pnginfo=metadata, compress_level=self.compress_level)

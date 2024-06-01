@@ -23,9 +23,14 @@ app.registerExtension({
                     };
 
                     const split = name.split('/');
-                    const subdir = split.length > 1 ? split[0] : '';
-                    const fileName = split[split.length - 1];
-
+                    let subdir = ''
+                    let fileName = ''
+                    if (split.length === 1) {
+                        fileName = split[0];
+                    } else {
+                        subdir = split.slice(0, split.length - 1).join('/');
+                        fileName = split[split.length - 1];
+                    }
                     img.src = api.apiURL(`/view?filename=${fileName}&subfolder=${subdir}&type=output${app.getRandParam()}`);
                     node.setSizeForImage?.();
                 }
