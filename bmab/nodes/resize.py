@@ -80,6 +80,7 @@ class BMABResizeByPerson:
 
 			x1, y1, x2, y2 = largest[0][1]
 			pratio = (y2 - y1) / image.height
+			print(f'Ratio {pratio:.2}, {ratio:.2}, {(pratio / ratio):.2}')
 			if pratio > ratio:
 				image_ratio = pratio / ratio
 				if image_ratio < 1.0:
@@ -88,6 +89,8 @@ class BMABResizeByPerson:
 			else:
 				results.append(image.convert('RGB'))
 				continue
+
+			print('Process image resize', image_ratio)
 
 			stretching_image = utils.resize_image_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio))
 			if method == 'stretching':
