@@ -3,7 +3,7 @@ name = "comfyui_bmab"
 description = "BMAB for ComfyUI. BMAB is an custom nodes of ComfyUI and has the function of post-processing the generated image according to settings. If necessary, you can find and redraw people, faces, and hands, or perform functions such as resize, resample, and add noise. You can composite two images or perform the Upscale function."
 version = "1.1.1"
 license = "AGPL-3.0"
-dependencies = ["lightning", "segment_anything", "omegaconf", "ultralytics", "scikit-image", "huggingface_hub", "transformers>=4.40.0", "blendmodes", "opencv-python", "urllib3"]
+dependencies = ["lightning", "segment_anything", "omegaconf", "ultralytics", "scikit-image", "huggingface_hub", "transformers>=4.40.0", "blendmodes", "opencv-python", "urllib3", "pillow_avif_plugin"]
 
 [project.urls]
 Repository = "https://github.com/portu-sim/comfyui_bmab"
