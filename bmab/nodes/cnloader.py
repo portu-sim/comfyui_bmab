@@ -1,5 +1,4 @@
-import os
-import sys
+import cv2
 import comfy
 import torch
 import numpy as np
@@ -11,6 +10,8 @@ from PIL import ImageDraw
 from PIL import ImageSequence
 from bmab import utils
 from bmab.nodes.binder import BMABBind
+from bmab.external.rmbg14.briarmbg import BriaRMBG
+from bmab.external.rmbg14.utilities import preprocess_image, postprocess_image
 
 
 class BMABControlNet:
@@ -216,6 +217,7 @@ class BMABControlNetIPAdapter(BMABControlNet):
 
 		self.case = None
 		self.cache = None
+		self.annotate_image = None
 
 	def changed(self, c):
 		if self.case is None:
@@ -241,6 +243,7 @@ class BMABControlNetIPAdapter(BMABControlNet):
 					'end_at': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 1.0, 'step': 0.001}),
 					'embeds_scaling': (['V only', 'K+V', 'K+V w/ C penalty', 'K+mean(V) w/ C penalty'],),
 					'resolution': ('INT', {'default': 512, 'min': 128, 'max': 1024, 'step': 8}),
+					'fill_noise': (('disable', 'enable'), ),
 					'image': (files, {'image_upload': True}),
 				},
 				'optional': {
@@ -263,6 +266,9 @@ class BMABControlNetIPAdapter(BMABControlNet):
 				),
 			}
 		}
+
+	RETURN_TYPES = ('BMAB bind', 'IMAGE', )
+	RETURN_NAMES = ('BMAB bind', 'annotation', )
 
 	FUNCTION = 'apply_ipadapter'
 
@@ -300,21 +306,73 @@ class BMABControlNetIPAdapter(BMABControlNet):
 
 		return resized, mask
 
-	def apply_ipadapter(self, bind: BMABBind, ipadapter_file, clip_name, weight, weight_type, combine_embeds, start_at, end_at, embeds_scaling, resolution, image, image_in=None):
+	@staticmethod
+	def generate_noise(seed, width, height):
+		img_1 = np.zeros([height, width, 3], dtype=np.uint8)
+		# Generate random Gaussian noise
+		mean = 0
+		stddev = 180
+		r, g, b = cv2.split(img_1)
+		# cv2.setRNGSeed(seed)
+		cv2.randn(r, mean, stddev)
+		cv2.randn(g, mean, stddev)
+		cv2.randn(b, mean, stddev)
+		img = cv2.merge([r, g, b])
+		pil_image = Image.fromarray(img, mode='RGB')
+		return pil_image.convert('L').convert('RGB')
+
+	def remove_background(self, image):
+		net = BriaRMBG()
+		device = utils.get_device()
+		net = BriaRMBG.from_pretrained('briaai/RMBG-1.4')
+		net.to(device)
+		net.eval()
+
+		model_input_size = [image.width, image.height]
+		orig_im = np.array(image)
+		orig_im_size = orig_im.shape[0:2]
+		img = preprocess_image(orig_im, model_input_size).to(device)
+
+		# inference
+		result = net(img)
+
+		# post process
+		result_image = postprocess_image(result[0][0], orig_im_size)
+
+		# save result
+		pil_im = Image.fromarray(result_image)
+
+		del net
+		del img
+		utils.torch_gc()
+
+		blank = self.generate_noise(0, image.width, image.height)
+		blank.paste(image.convert('RGBA'), (0, 0), mask=pil_im)
+		return blank
+
+	def apply_ipadapter(self, bind: BMABBind, ipadapter_file, clip_name, weight, weight_type, combine_embeds, start_at, end_at, embeds_scaling, resolution, fill_noise, image, image_in=None):
 		from ComfyUI_IPAdapter_plus.IPAdapterPlus import IPAdapterAdvanced
 
-		if image_in is not None:
-			pixels = image_in
-		else:
-			pixels, mask = self.load_image(image)
-		bgimg = utils.tensor2pil(pixels).convert('RGB')
-		resized, mask = self.resize_and_fill(bgimg, resolution)
-		pixels = utils.pil2tensor(resized)
+		c = (bind.model, ipadapter_file, clip_name, weight, weight_type, combine_embeds, start_at, end_at, embeds_scaling, resolution, fill_noise, image)
+		if self.case != c:
+			self.case = c
+			fill_noise = fill_noise == 'enable'
 
-		ipadapter = IPAdapterAdvanced()
-		ipadapter_model = self.load_ipadapter_model(ipadapter_file)
-		clip = self.load_clip(clip_name)
-		work_model, face_image = ipadapter.apply_ipadapter(bind.model, ipadapter_model, start_at, end_at, weight, weight_type=weight_type, combine_embeds=combine_embeds, embeds_scaling=embeds_scaling, image=pixels, clip_vision=clip)
-		bind.model = work_model
-		return (bind, )
+			if image_in is not None:
+				pixels = image_in
+			else:
+				pixels, mask = self.load_image(image)
+			bgimg = utils.tensor2pil(pixels).convert('RGB')
+			resized = utils.resize_and_fill(bgimg, resolution, resolution)
+			if fill_noise:
+				resized = self.remove_background(resized)
+			pixels = utils.pil2tensor(resized)
+			self.annotate_image = pixels
 
+			ipadapter = IPAdapterAdvanced()
+			ipadapter_model = self.load_ipadapter_model(ipadapter_file)
+			clip = self.load_clip(clip_name)
+			work_model, face_image = ipadapter.apply_ipadapter(bind.model, ipadapter_model, start_at, end_at, weight, weight_type=weight_type, combine_embeds=combine_embeds, embeds_scaling=embeds_scaling, image=pixels, clip_vision=clip)
+			self.cache = work_model
+		bind.model = self.cache
+		return (bind, self.annotate_image, )
