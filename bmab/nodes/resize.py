@@ -117,9 +117,21 @@ class BMABResizeByPerson:
 				image = process.process_img2img_with_mask(bind, stretching_image, img2img, mask)
 				results.append(image.convert('RGB'))
 			elif method == 'inpaint+lama':
+				max_length = max(image.width, image.height)
 				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * image_ratio), int(image.height * image_ratio))
+
+				# lama image should be 512*512
+				lama_img = utils.resize_and_fill(stretching_image, max_length, max_length).resize((512, 512), Image.Resampling.LANCZOS)
+				lama_msk = utils.resize_and_fill(mask, max_length, max_length).resize((512, 512), Image.Resampling.LANCZOS)
 				lama = LamaInpainting()
-				stretching_image = lama(stretching_image, mask)
+				lama_result = lama(lama_img, lama_msk)
+
+				# resize back to streching image
+				recovery_image = lama_result.resize((max_length, max_length), Image.Resampling.LANCZOS)
+				blur = ImageFilter.GaussianBlur(4)
+				blur_mask = mask.filter(blur)
+				stretching_image.paste(recovery_image, (0, 0), mask=blur_mask)
+
 				stretching_image.save('stretching_image.png')
 				mask.save('mask.png')
 				img2img = {
