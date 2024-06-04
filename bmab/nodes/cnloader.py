@@ -354,7 +354,7 @@ class BMABControlNetIPAdapter(BMABControlNet):
 		from ComfyUI_IPAdapter_plus.IPAdapterPlus import IPAdapterAdvanced
 
 		c = (bind.model, ipadapter_file, clip_name, weight, weight_type, combine_embeds, start_at, end_at, embeds_scaling, resolution, fill_noise, image)
-		if self.case != c:
+		if self.case != c or image_in is not None:
 			self.case = c
 			fill_noise = fill_noise == 'enable'
 

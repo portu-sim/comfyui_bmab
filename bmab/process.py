@@ -42,6 +42,8 @@ def process_img2img_with_mask(bind: BMABBind, image, params, mask=None, box=None
 
 	if box is None:
 		box = mask.getbbox()
+		if box is None:
+			return image
 
 	if mask is None:
 		mask = Image.new('L', image.size, 0)
