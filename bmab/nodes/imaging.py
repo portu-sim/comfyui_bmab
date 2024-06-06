@@ -131,6 +131,9 @@ class BMABAlphaComposit:
 			'required': {
 				'image1': ('IMAGE',),
 				'image2': ('IMAGE',),
+			},
+			'optional': {
+				'alpha': ('MASK',),
 			}
 		}
 
@@ -140,13 +143,16 @@ class BMABAlphaComposit:
 
 	CATEGORY = 'BMAB/imaging'
 
-	def process(self, image1, image2):
+	def process(self, image1, image2, alpha):
 		results = []
 		for image1, image2 in zip(utils.get_pils_from_pixels(image1), utils.get_pils_from_pixels(image2)):
+			if alpha is not None:
+				alpha = ImageOps.invert(utils.tensor2pil(alpha))
+				image2.putalpha(alpha)
 			try:
 				results.append(Image.alpha_composite(image1.convert('RGBA'), image2.convert('RGBA')).convert('RGB'))
 			except ValueError:
-				results.append(Image.alpha_composite(image1.convert('RGBA'), image2.convert('RGBA').resize(image1.size, Image.Resampling.LANCZOS)).convert('RGB'))
+				results.append(Image.alpha_composite(image1.convert('RGBA'), image2.resize(image1.size, Image.Resampling.LANCZOS).convert('RGBA')).convert('RGB'))
 		pixels = utils.get_pixels_from_pils(results)
 		return (pixels, )
 

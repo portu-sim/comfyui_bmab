@@ -129,7 +129,7 @@ class BMABFaceDetailer(BMABDetailer):
 			candidate = sorted(candidate, key=lambda c: c[0], reverse=True)
 
 		for index, (value, box, logit) in enumerate(candidate):
-			if limit != 0 and index > limit:
+			if limit != 0 and index >= limit:
 				return bgimg
 			bgimg = process.process_img2img_with_mask(bind, bgimg, img2img, box=box)
 		return bgimg
