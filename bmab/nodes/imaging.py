@@ -147,7 +147,7 @@ class BMABAlphaComposit:
 		results = []
 		for image1, image2 in zip(utils.get_pils_from_pixels(image1), utils.get_pils_from_pixels(image2)):
 			if alpha is not None:
-				alpha = ImageOps.invert(utils.tensor2pil(alpha))
+				alpha = utils.tensor2pil(alpha)
 				image2.putalpha(alpha)
 			try:
 				results.append(Image.alpha_composite(image1.convert('RGBA'), image2.convert('RGBA')).convert('RGB'))

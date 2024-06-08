@@ -7,7 +7,7 @@ from .imaging import BMABDetectionCrop, BMABRemoveBackground, BMABAlphaComposit,
 from .imaging import BMABDetectAndMask, BMABLamaInpaint, BMABDetector, BMABSegmentAnything, BMABMasksToImages
 from .imaging import BMABLoadImage, BMABEdge, BMABLoadOutputImage
 from .loaders import BMABLoraLoader
-from .resize import BMABResizeByPerson, BMABResizeAndFill, BMABCrop
+from .resize import BMABResizeByPerson, BMABResizeByRatio, BMABResizeAndFill, BMABCrop
 from .sampler import BMABKSampler, BMABKSamplerHiresFix, BMABPrompt, BMABIntegrator, BMABSeedGenerator, BMABExtractor
 from .sampler import BMABContextNode, BMABKSamplerHiresFixWithUpscaler, BMABImportIntegrator, BMABKSamplerKohyaDeepShrink
 from .sampler import BMABClipTextEncoderSDXL

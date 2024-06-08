@@ -17,6 +17,7 @@ NODE_CLASS_MAPPINGS = {
 
     # Resize
     'BMAB Resize By Person': nodes.BMABResizeByPerson,
+    'BMAB Resize By Ratio': nodes.BMABResizeByRatio,
     'BMAB Resize and Fill': nodes.BMABResizeAndFill,
     'BMAB Crop': nodes.BMABCrop,
 
@@ -94,6 +95,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
     # Resize
     'BMAB Resize By Person': 'BMAB Resize By Person',
+    'BMAB Resize By Ratio': 'BMAB Resize By Ratio',
     'BMAB Resize and Fill': 'BMAB Resize And Fill',
     'BMAB Crop': 'BMAB Crop',
 
