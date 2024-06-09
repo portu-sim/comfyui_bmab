@@ -13,7 +13,7 @@ https://github.com/portu-sim/comfyui_bmab/blob/main/resources/examples/example.j
 ### Gallery
 
 [instagram](https://www.instagram.com/portu.sim/)   
-[facebook](https://www.facebook.com/profile.php?id=61553793992101)
+[facebook](https://www.facebook.com/portu.sim)
 
 ### Hand Detailing Sample
 
