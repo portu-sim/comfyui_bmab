@@ -1,5 +1,5 @@
 import comfy
-import nodes
+import folder_paths
 
 from PIL import Image
 from PIL import ImageOps
@@ -150,6 +150,9 @@ class BMABResizeByPerson:
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels,)
+
+
+import torch
 
 
 class BMABResizeByRatio:
@@ -306,4 +309,132 @@ class BMABCrop:
 			results.append(utils.crop(img, width, height, resized=resize))
 		pixels = utils.get_pixels_from_pils(results)
 		return (pixels,)
+
+
+class BMABZoomOut:
+	resize_methods = ['stretching', 'inpaint', 'inpaint+lama', 'controlnet']
+	resize_alignment = ['bottom', 'top', 'top-right', 'right', 'bottom-right', 'bottom-left', 'left', 'top-left', 'center']
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'bind': ('BMAB bind',),
+				'steps': ('INT', {'default': 20, 'min': 0, 'max': 10000}),
+				'cfg_scale': ('FLOAT', {'default': 8.0, 'min': 0.0, 'max': 100.0, 'step': 0.1, 'round': 0.01}),
+				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
+				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
+				'denoise': ('FLOAT', {'default': 0.5, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+				'method': (s.resize_methods,),
+				'alignment': (s.resize_alignment,),
+				'ratio': ('FLOAT', {'default': 1.25, 'min': 1.0, 'max': 2.0, 'step': 0.01}),
+				'dilation': ('INT', {'default': 30, 'min': 4, 'max': 128, 'step': 1}),
+				'control_net_name': (folder_paths.get_filename_list('controlnet'),),
+			},
+			'optional': {
+				'image': ('IMAGE',),
+			}
+		}
+
+	RETURN_TYPES = ('BMAB bind', 'IMAGE', )
+	RETURN_NAMES = ('BMAB bind', 'image', )
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/resize'
+
+	def generate(self, width, height, batch_size=1):
+		self.device = comfy.model_management.intermediate_device()
+		latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=self.device)
+		return latent
+
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, method, alignment, ratio, dilation, control_net_name, image=None):
+		pixels = bind.pixels if image is None else image
+
+		results = []
+		for image in utils.get_pils_from_pixels(pixels):
+
+			if bind.context is not None:
+				steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
+
+			print('Process image resize', ratio)
+
+			stretching_image = utils.resize_image_with_alignment(image, alignment, int(image.width * ratio), int(image.height * ratio))
+			if method == 'stretching':
+				results.append(stretching_image.convert('RGB'))
+			elif method == 'inpaint':
+				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * ratio), int(image.height * ratio))
+				blur = ImageFilter.GaussianBlur(10)
+				blur_mask = mask.filter(blur)
+				blur_mask = ImageOps.invert(blur_mask)
+				temp = stretching_image.copy()
+				temp = temp.filter(blur)
+				temp.paste(stretching_image, (0, 0), mask=blur_mask)
+				img2img = {
+					'steps': steps,
+					'cfg_scale': cfg_scale,
+					'sampler_name': sampler_name,
+					'scheduler': scheduler,
+					'denoise': denoise,
+					'padding': 32,
+					'dilation': dilation,
+					'width': stretching_image.width,
+					'height': stretching_image.height,
+				}
+				image = process.process_img2img_with_mask(bind, stretching_image, img2img, mask)
+				results.append(image.convert('RGB'))
+			elif method == 'controlnet':
+				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * ratio), int(image.height * ratio))
+				blur = ImageFilter.GaussianBlur(10)
+				blur_mask = mask.filter(blur)
+				blur_mask = ImageOps.invert(blur_mask)
+				temp = stretching_image.copy()
+				temp = temp.filter(blur)
+				temp.paste(stretching_image, (0, 0), mask=blur_mask)
+				img2img = {
+					'steps': steps,
+					'cfg_scale': cfg_scale,
+					'sampler_name': sampler_name,
+					'scheduler': scheduler,
+					'denoise': denoise,
+					'padding': 32,
+					'dilation': dilation,
+					'width': stretching_image.width,
+					'height': stretching_image.height,
+				}
+				image = process.process_img2img_with_controlnet_mask(bind, control_net_name, stretching_image, img2img, mask)
+				results.append(image.convert('RGB'))
+			elif method == 'inpaint+lama':
+				max_length = max(image.width, image.height)
+				mask, box = utils.get_mask_with_alignment(image, alignment, int(image.width * ratio), int(image.height * ratio))
+
+				# lama image should be 512*512
+				lama_img = utils.resize_and_fill(stretching_image, max_length, max_length).resize((512, 512), Image.Resampling.LANCZOS)
+				lama_msk = utils.resize_and_fill(mask, max_length, max_length).resize((512, 512), Image.Resampling.LANCZOS)
+				lama = LamaInpainting()
+				lama_result = lama(lama_img, lama_msk)
+
+				# resize back to streching image
+				recovery_image = lama_result.resize((max_length, max_length), Image.Resampling.LANCZOS)
+				blur = ImageFilter.GaussianBlur(4)
+				blur_mask = mask.filter(blur)
+				stretching_image.paste(recovery_image, (0, 0), mask=blur_mask)
+
+				stretching_image.save('stretching_image.png')
+				mask.save('mask.png')
+				img2img = {
+					'steps': steps,
+					'cfg_scale': cfg_scale,
+					'sampler_name': sampler_name,
+					'scheduler': scheduler,
+					'denoise': denoise,
+					'padding': 32,
+					'dilation': dilation,
+					'width': stretching_image.width,
+					'height': stretching_image.height,
+				}
+				image = process.process_img2img_with_mask(bind, stretching_image, img2img, mask)
+				results.append(image.convert('RGB'))
+
+		bind.pixels = utils.get_pixels_from_pils(results)
+		return (bind, bind.pixels,)
 

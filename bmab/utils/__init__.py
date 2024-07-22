@@ -13,7 +13,7 @@ from torch.hub import download_url_to_file, get_dir
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFilter
-from .color import get_color_name
+from .colorname import get_color_name
 
 
 def pil2tensor(image):
@@ -136,54 +136,58 @@ alignment = {
 }
 
 
-def resize_image_with_alignment(image, al, width, height):
+def resize_image_with_alignment(image, al, width, height, base=None):
 	if al not in alignment:
 		return image
-	return resize_margin(image, *alignment[al](width - image.width, height - image.height))
+	return resize_margin(image, *alignment[al](width - image.width, height - image.height), base)
 
 
 def get_mask_with_alignment(image, al, width, height, dilation=0):
 	return draw_mask(image, *alignment[al](width - image.width, height - image.height), dilation)
 
 
-def resize_margin(image, left, right, top, bottom):
+def resize_margin(image, left, right, top, bottom, base):
 	left = int(left)
 	right = int(right)
 	top = int(top)
 	bottom = int(bottom)
 	input_image = image.copy()
 
-	if left != 0:
-		res = Image.new("RGB", (image.width + left, image.height))
-		res.paste(image, (left, 0))
-		res.paste(image.resize((left, image.height), box=(0, 0, 0, image.height)), box=(0, 0))
-		image = res
-	if right != 0:
-		res = Image.new("RGB", (image.width + right, image.height))
-		res.paste(image, (0, 0))
-		res.paste(image.resize((right, image.height), box=(image.width, 0, image.width, image.height)), box=(image.width, 0))
-		image = res
-	if top != 0:
-		res = Image.new("RGB", (image.width, image.height + top))
-		res.paste(image, (0, top))
-		res.paste(image.resize((image.width, top), box=(0, 0, image.width, 0)), box=(0, 0))
-		image = res
-	if bottom != 0:
-		res = Image.new("RGB", (image.width, image.height + bottom))
-		res.paste(image, (0, 0))
-		res.paste(image.resize((image.width, bottom), box=(0, image.height, image.width, image.height)), box=(0, image.height))
-		image = res
+	if base is None:
+		if left != 0:
+			res = Image.new("RGB", (image.width + left, image.height))
+			res.paste(image, (left, 0))
+			res.paste(image.resize((left, image.height), box=(0, 0, 0, image.height)), box=(0, 0))
+			image = res
+		if right != 0:
+			res = Image.new("RGB", (image.width + right, image.height))
+			res.paste(image, (0, 0))
+			res.paste(image.resize((right, image.height), box=(image.width, 0, image.width, image.height)), box=(image.width, 0))
+			image = res
+		if top != 0:
+			res = Image.new("RGB", (image.width, image.height + top))
+			res.paste(image, (0, top))
+			res.paste(image.resize((image.width, top), box=(0, 0, image.width, 0)), box=(0, 0))
+			image = res
+		if bottom != 0:
+			res = Image.new("RGB", (image.width, image.height + bottom))
+			res.paste(image, (0, 0))
+			res.paste(image.resize((image.width, bottom), box=(0, image.height, image.width, image.height)), box=(0, image.height))
+			image = res
 
-	img = image.filter(ImageFilter.GaussianBlur(10))
-	region_size = 10
-	width, height = img.size
-	for y in range(0, height, region_size):
-		for x in range(0, width, region_size):
-			region = img.crop((x, y, x + region_size, y + region_size))
-			average_color = region.resize((1, 1)).getpixel((0, 0))
-			img.paste(average_color, (x, y, x + region_size, y + region_size))
-	img.paste(input_image, box=(left, top))
-	image = img.resize(input_image.size, resample=Image.Resampling.LANCZOS)
+		img = image.filter(ImageFilter.GaussianBlur(10))
+		region_size = 10
+		width, height = img.size
+		for y in range(0, height, region_size):
+			for x in range(0, width, region_size):
+				region = img.crop((x, y, x + region_size, y + region_size))
+				average_color = region.resize((1, 1)).getpixel((0, 0))
+				img.paste(average_color, (x, y, x + region_size, y + region_size))
+		img.paste(input_image, box=(left, top))
+		image = img.resize(input_image.size, resample=Image.Resampling.LANCZOS)
+	else:
+		base.paste(input_image, box=(left, top))
+		image = base.resize(input_image.size, resample=Image.Resampling.LANCZOS)
 	return image
 
 
