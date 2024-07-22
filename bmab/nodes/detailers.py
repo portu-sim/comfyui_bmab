@@ -591,6 +591,8 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 				box = bs[0] + x, bs[1] + y, bs[2] + x, bs[3] + y
 				m = sam.sam_predict_box(bgimg, box).convert('L')
 				box = m.getbbox()
+				for hand in person_hand:
+					box = min(hand[0], box[0]), min(hand[1], box[1]), max(hand[2], box[2]), max(hand[3], box[3])
 
 		cbx = utils.get_box_with_padding(bgimg, box, padding)
 
