@@ -2,6 +2,7 @@ import torch
 import comfy
 import nodes
 import folder_paths
+import node_helpers
 
 from PIL import Image
 
@@ -58,6 +59,7 @@ class BMABIntegrator:
 				'stop_at_clip_layer': ('INT', {'default': -2, 'min': -24, 'max': -1, 'step': 1}),
 				'token_normalization': (['none', 'mean', 'length', 'length+mean'],),
 				'weight_interpretation': (['original', 'sdxl', 'comfy', 'A1111', 'compel', 'comfy++', 'down_weight'],),
+
 				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 				'negative_prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 			},
@@ -77,15 +79,15 @@ class BMABIntegrator:
 	def encode_sdxl(self, clip, text_g, text_l):
 		width, height, crop_w, crop_h, target_width, target_height = 1024, 1024, 0, 0, 1024, 1024
 		tokens = clip.tokenize(text_g)
-		tokens["l"] = clip.tokenize(text_l)["l"]
-		if len(tokens["l"]) != len(tokens["g"]):
-			empty = clip.tokenize("")
-			while len(tokens["l"]) < len(tokens["g"]):
-				tokens["l"] += empty["l"]
-			while len(tokens["l"]) > len(tokens["g"]):
-				tokens["g"] += empty["g"]
+		tokens['l'] = clip.tokenize(text_l)['l']
+		if len(tokens['l']) != len(tokens['g']):
+			empty = clip.tokenize('')
+			while len(tokens['l']) < len(tokens['g']):
+				tokens['l'] += empty['l']
+			while len(tokens['l']) > len(tokens['g']):
+				tokens['g'] += empty['g']
 		cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
-		return [[cond, {"pooled_output": pooled, "width": width, "height": height, "crop_w": crop_w, "crop_h": crop_h, "target_width": target_width, "target_height": target_height}]]
+		return [[cond, {'pooled_output': pooled, 'width': width, 'height': height, 'crop_w': crop_w, 'crop_h': crop_h, 'target_width': target_width, 'target_height': target_height}]]
 
 	def integrate_inputs(self, model, clip, vae, context: BMABContext, stop_at_clip_layer, token_normalization, weight_interpretation, prompt, negative_prompt, seed_in=None, latent=None, image=None):
 		if context is None and seed_in is None:
@@ -120,6 +122,58 @@ class BMABIntegrator:
 		clip.clip_layer(stop_at_clip_layer)
 
 		return BMABBind(model, clip, vae, prompt, negative_prompt, positive, negative, latent, context, image, seed),
+
+
+
+class BMABFluxIntegrator:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'model': ('MODEL',),
+				'clip': ('CLIP',),
+				'vae': ('VAE',),
+				'context': ('CONTEXT',),
+				'guidance': ('FLOAT', {'default': 3.5, 'min': 0.0, 'max': 100.0, 'step': 0.1}),
+				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+			},
+			'optional': {
+				'seed_in': ('SEED',),
+				'latent': ('LATENT',),
+				'image': ('IMAGE',),
+			}
+		}
+
+	RETURN_TYPES = ('BMAB bind', )
+	RETURN_NAMES = ('BMAB bind', )
+	FUNCTION = 'integrate_inputs'
+
+	CATEGORY = 'BMAB/sampler'
+
+	def integrate_inputs(self, model, clip, vae, context: BMABContext, guidance, prompt, seed_in=None, latent=None, image=None):
+		if context is None and seed_in is None:
+			print('No SEED defined.')
+			raise ValueError('No SEED defined')
+
+		if context is None:
+			seed = seed_in
+		else:
+			seed = context.seed
+
+		prompt = utils.parse_prompt(prompt, seed)
+
+		tokens = clip.tokenize(prompt)
+		output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
+		cond = output.pop("cond")
+		positive = [[cond, output]]
+		positive = node_helpers.conditioning_set_values(positive, {"guidance": guidance})
+
+		tokens = clip.tokenize('')
+		output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
+		cond = output.pop("cond")
+		negative = [[cond, output]]
+
+		return BMABBind(model, clip, vae, prompt, '', positive, negative, latent, context, image, seed),
 
 
 class BMABImportIntegrator:
@@ -281,7 +335,7 @@ class BMABKSamplerHiresFix:
 	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise=1.0, image=None, lora: BMABLoraBind = None):
 		pixels = bind.pixels if image is None else image
 		if pixels is None:
-			pixels = bind.vae.decode(bind.latent_image["samples"])
+			pixels = bind.vae.decode(bind.latent_image['samples'])
 
 		if bind.context is not None:
 			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
@@ -306,7 +360,7 @@ class BMABKSamplerHiresFixWithUpscaler:
 				'sampler_name': (['Use same sampler'] + comfy.samplers.KSampler.SAMPLERS,),
 				'scheduler': (['Use same scheduler'] + comfy.samplers.KSampler.SCHEDULERS,),
 				'denoise': ('FLOAT', {'default': 0.4, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
-				"model_name": (['LANCZOS'] + folder_paths.get_filename_list("upscale_models"),),
+				'model_name': (['LANCZOS'] + folder_paths.get_filename_list('upscale_models'),),
 				'scale': ('FLOAT', {'default': 2.0, 'min': 0, 'max': 4.0, 'step': 0.001}),
 				'width': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 				'height': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
@@ -331,10 +385,10 @@ class BMABKSamplerHiresFixWithUpscaler:
 		return (model_lora, clip_lora)
 
 	def load_model(self, model_name):
-		model_path = folder_paths.get_full_path("upscale_models", model_name)
+		model_path = folder_paths.get_full_path('upscale_models', model_name)
 		sd = comfy.utils.load_torch_file(model_path, safe_load=True)
-		if "module.layers.0.residual_group.blocks.0.norm1.weight" in sd:
-			sd = comfy.utils.state_dict_prefix_replace(sd, {"module.": ""})
+		if 'module.layers.0.residual_group.blocks.0.norm1.weight' in sd:
+			sd = comfy.utils.state_dict_prefix_replace(sd, {'module.': ''})
 		out = model_loading.load_state_dict(sd).eval()
 		return out
 
@@ -365,14 +419,14 @@ class BMABKSamplerHiresFixWithUpscaler:
 				if tile < 128:
 					raise e
 
-		upscale_model.to("cpu")
+		upscale_model.to('cpu')
 		s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
 		return (s,)
 
 	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, model_name, scale, width, height,  image=None, lora: BMABLoraBind = None):
 		pixels = bind.pixels if image is None else image
 		if pixels is None:
-			pixels = bind.vae.decode(bind.latent_image["samples"])
+			pixels = bind.vae.decode(bind.latent_image['samples'])
 
 		if bind.context is not None:
 			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
@@ -423,15 +477,15 @@ class BMABPrompt:
 	def encode_sdxl(self, clip, text_g, text_l):
 		width, height, crop_w, crop_h, target_width, target_height = 1024, 1024, 0, 0, 1024, 1024
 		tokens = clip.tokenize(text_g)
-		tokens["l"] = clip.tokenize(text_l)["l"]
-		if len(tokens["l"]) != len(tokens["g"]):
-			empty = clip.tokenize("")
-			while len(tokens["l"]) < len(tokens["g"]):
-				tokens["l"] += empty["l"]
-			while len(tokens["l"]) > len(tokens["g"]):
-				tokens["g"] += empty["g"]
+		tokens['l'] = clip.tokenize(text_l)['l']
+		if len(tokens['l']) != len(tokens['g']):
+			empty = clip.tokenize('')
+			while len(tokens['l']) < len(tokens['g']):
+				tokens['l'] += empty['l']
+			while len(tokens['l']) > len(tokens['g']):
+				tokens['g'] += empty['g']
 		cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
-		return [[cond, {"pooled_output": pooled, "width": width, "height": height, "crop_w": crop_w, "crop_h": crop_h, "target_width": target_width, "target_height": target_height}]]
+		return [[cond, {'pooled_output': pooled, 'width': width, 'height': height, 'crop_w': crop_w, 'crop_h': crop_h, 'target_width': target_width, 'target_height': target_height}]]
 
 	def prompt(self, bind: BMABBind, text, token_normalization, weight_interpretation):
 
@@ -457,7 +511,7 @@ class BMABPrompt:
 
 
 class BMABKSamplerKohyaDeepShrink:
-	upscale_methods = ["bicubic", "nearest-exact", "bilinear", "area", "bislerp"]
+	upscale_methods = ['bicubic', 'nearest-exact', 'bilinear', 'area', 'bislerp']
 
 	@classmethod
 	def INPUT_TYPES(s):
@@ -472,12 +526,12 @@ class BMABKSamplerKohyaDeepShrink:
 				'scale': ('FLOAT', {'default': 2.0, 'min': 0, 'max': 4.0, 'step': 0.001}),
 				'width': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
 				'height': ('INT', {'default': 512, 'min': 0, 'max': nodes.MAX_RESOLUTION, 'step': 8}),
-				"block_number": ("INT", {"default": 3, "min": 1, "max": 32, "step": 1}),
-				"start_percent": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.001}),
-				"end_percent": ("FLOAT", {"default": 0.35, "min": 0.0, "max": 1.0, "step": 0.001}),
-				"downscale_after_skip": ("BOOLEAN", {"default": True}),
-				"downscale_method": (s.upscale_methods,),
-				"upscale_method": (s.upscale_methods,),
+				'block_number': ('INT', {'default': 3, 'min': 1, 'max': 32, 'step': 1}),
+				'start_percent': ('FLOAT', {'default': 0.0, 'min': 0.0, 'max': 1.0, 'step': 0.001}),
+				'end_percent': ('FLOAT', {'default': 0.35, 'min': 0.0, 'max': 1.0, 'step': 0.001}),
+				'downscale_after_skip': ('BOOLEAN', {'default': True}),
+				'downscale_method': (s.upscale_methods,),
+				'upscale_method': (s.upscale_methods,),
 			},
 			'optional': {
 				'image': ('IMAGE',),
@@ -501,7 +555,7 @@ class BMABKSamplerKohyaDeepShrink:
 	def sample(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, scale, width, height, block_number, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method, image=None, lora: BMABLoraBind = None):
 		pixels = bind.pixels if image is None else image
 		if pixels is None:
-			pixels = bind.vae.decode(bind.latent_image["samples"])
+			pixels = bind.vae.decode(bind.latent_image['samples'])
 
 		if bind.context is not None:
 			steps, cfg_scale, sampler_name, scheduler = bind.context.update(steps, cfg_scale, sampler_name, scheduler)
@@ -533,20 +587,20 @@ class BMABKSamplerKohyaDeepShrink:
 		return bind, bind.pixels,
 
 	def patch(self, model, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method):
-		model_sampling = model.get_model_object("model_sampling")
+		model_sampling = model.get_model_object('model_sampling')
 		sigma_start = model_sampling.percent_to_sigma(start_percent)
 		sigma_end = model_sampling.percent_to_sigma(end_percent)
 
 		def input_block_patch(h, transformer_options):
-			if transformer_options["block"][1] == block_number:
-				sigma = transformer_options["sigmas"][0].item()
+			if transformer_options['block'][1] == block_number:
+				sigma = transformer_options['sigmas'][0].item()
 				if sigma <= sigma_start and sigma >= sigma_end:
-					h = comfy.utils.common_upscale(h, round(h.shape[-1] * (1.0 / downscale_factor)), round(h.shape[-2] * (1.0 / downscale_factor)), downscale_method, "disabled")
+					h = comfy.utils.common_upscale(h, round(h.shape[-1] * (1.0 / downscale_factor)), round(h.shape[-2] * (1.0 / downscale_factor)), downscale_method, 'disabled')
 			return h
 
 		def output_block_patch(h, hsp, transformer_options):
 			if h.shape[2] != hsp.shape[2]:
-				h = comfy.utils.common_upscale(h, hsp.shape[-1], hsp.shape[-2], upscale_method, "disabled")
+				h = comfy.utils.common_upscale(h, hsp.shape[-1], hsp.shape[-2], upscale_method, 'disabled')
 			return h, hsp
 
 		m = model.clone()

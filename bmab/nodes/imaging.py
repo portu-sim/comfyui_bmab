@@ -529,5 +529,3 @@ class BMABBlackAndWhite:
 			results.append(pil)
 		pixels = utils.get_pixels_from_pils(results)
 		return (pixels,)
-
-
