@@ -10,6 +10,16 @@ You can download sample.json.
 
 https://github.com/portu-sim/comfyui_bmab/blob/main/resources/examples/example.json
 
+# Flux
+
+BMAB now supports Flux 1.
+
+
+https://github.com/portu-sim/comfyui_bmab/blob/main/resources/examples/bmab-flux-sample.json
+
+<img src="https://github.com/user-attachments/assets/dfa36eb1-6978-47e7-a0d0-67c82639cf52"/>
+
+
 ### Gallery
 
 [instagram](https://www.instagram.com/portu.sim/)   

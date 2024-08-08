@@ -1,0 +1,356 @@
+{
+  "last_node_id": 41,
+  "last_link_id": 65,
+  "nodes": [
+    {
+      "id": 39,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        8,
+        617
+      ],
+      "size": {
+        "0": 315,
+        "1": 98
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            58
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            59
+          ],
+          "shape": 3,
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            61
+          ],
+          "shape": 3,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "FLUX1\\flux1-dev-fp8.safetensors"
+      ]
+    },
+    {
+      "id": 38,
+      "type": "BMAB Flux Integrator",
+      "pos": [
+        376,
+        617
+      ],
+      "size": [
+        411.24033826936557,
+        377.8769301478941
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 58
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 59
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 61
+        },
+        {
+          "name": "context",
+          "type": "CONTEXT",
+          "link": 62
+        },
+        {
+          "name": "seed_in",
+          "type": "SEED",
+          "link": null
+        },
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "link": 63
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BMAB bind",
+          "type": "BMAB bind",
+          "links": [
+            64
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BMAB Flux Integrator"
+      },
+      "widgets_values": [
+        3.5,
+        "cute anime girl with massive fluffy fennec ears and a big fluffy tail blonde messy long hair blue eyes wearing a maid outfit with a long black gold leaf pattern dress and a white apron mouth open placing a fancy black forest cake with candles on top of a dinner table of an old dark Victorian mansion lit by candlelight with a bright window to the foggy forest and very expensive stuff everywhere there are paintings on the walls"
+      ]
+    },
+    {
+      "id": 41,
+      "type": "BMAB KSampler",
+      "pos": [
+        841,
+        618
+      ],
+      "size": {
+        "0": 315,
+        "1": 174
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "bind",
+          "type": "BMAB bind",
+          "link": 64
+        },
+        {
+          "name": "lora",
+          "type": "BMAB lora",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BMAB bind",
+          "type": "BMAB bind",
+          "links": null,
+          "shape": 3
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            65
+          ],
+          "shape": 3,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BMAB KSampler"
+      },
+      "widgets_values": [
+        20,
+        1,
+        "euler",
+        "normal",
+        1
+      ]
+    },
+    {
+      "id": 27,
+      "type": "EmptySD3LatentImage",
+      "pos": [
+        11,
+        991
+      ],
+      "size": {
+        "0": 315,
+        "1": 106
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            63
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptySD3LatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 9,
+      "type": "SaveImage",
+      "pos": [
+        1190,
+        628
+      ],
+      "size": {
+        "0": 985.3012084960938,
+        "1": 1060.3828125
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 65
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "ComfyUI"
+      ]
+    },
+    {
+      "id": 40,
+      "type": "BMAB Context",
+      "pos": [
+        7,
+        757
+      ],
+      "size": {
+        "0": 315,
+        "1": 178
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "seed_in",
+          "type": "SEED",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BMAB context",
+          "type": "CONTEXT",
+          "links": [
+            62
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BMAB Context"
+      },
+      "widgets_values": [
+        972054013131368,
+        "randomize",
+        20,
+        8.040000000000001,
+        "dpmpp_sde",
+        "karras"
+      ]
+    }
+  ],
+  "links": [
+    [
+      58,
+      39,
+      0,
+      38,
+      0,
+      "MODEL"
+    ],
+    [
+      59,
+      39,
+      1,
+      38,
+      1,
+      "CLIP"
+    ],
+    [
+      61,
+      39,
+      2,
+      38,
+      2,
+      "VAE"
+    ],
+    [
+      62,
+      40,
+      0,
+      38,
+      3,
+      "CONTEXT"
+    ],
+    [
+      63,
+      27,
+      0,
+      38,
+      5,
+      "LATENT"
+    ],
+    [
+      64,
+      38,
+      0,
+      41,
+      0,
+      "BMAB bind"
+    ],
+    [
+      65,
+      41,
+      1,
+      9,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.7513148009015777,
+      "offset": [
+        466.97698927324814,
+        -334.0327902578701
+      ]
+    }
+  },
+  "version": 0.4
+}
