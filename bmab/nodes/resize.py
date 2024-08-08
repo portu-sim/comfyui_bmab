@@ -233,6 +233,8 @@ class BMABResizeByRatio:
 
 				# resize back to streching image
 				recovery_image = lama_result.resize((max_length, max_length), Image.Resampling.LANCZOS)
+				recovery_image = utils.crop(recovery_image, image.width, image.height, False)
+
 				blur = ImageFilter.GaussianBlur(4)
 				blur_mask = mask.filter(blur)
 				stretching_image.paste(recovery_image, (0, 0), mask=blur_mask)
@@ -415,6 +417,7 @@ class BMABZoomOut:
 
 				# resize back to streching image
 				recovery_image = lama_result.resize((max_length, max_length), Image.Resampling.LANCZOS)
+				recovery_image = utils.crop(recovery_image, image.width, image.height, False)
 				blur = ImageFilter.GaussianBlur(4)
 				blur_mask = mask.filter(blur)
 				stretching_image.paste(recovery_image, (0, 0), mask=blur_mask)
