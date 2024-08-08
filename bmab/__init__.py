@@ -1,14 +1,7 @@
-from bmab import nodes
+from bmab import nodes, serverext
 
 
 NODE_CLASS_MAPPINGS = {
-    'BMAB Upscaler': nodes.BMABUpscale,
-    'BMAB Save Image': nodes.BMABSaveImage,
-    'BMAB Upscale With Model': nodes.BMABUpscaleWithModel,
-    'BMAB LoRA Loader': nodes.BMABLoraLoader,
-    'BMAB Prompt': nodes.BMABPrompt,
-    'BMAB Google Gemini Prompt': nodes.BMABGoogleGemini,
-
     # Basic
     'BMAB Basic': nodes.BMABBasic,
     'BMAB Edge': nodes.BMABEdge,
@@ -20,9 +13,12 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Resize By Ratio': nodes.BMABResizeByRatio,
     'BMAB Resize and Fill': nodes.BMABResizeAndFill,
     'BMAB Crop': nodes.BMABCrop,
+    'BMAB Zoom Out': nodes.BMABZoomOut,
+    'BMAB Square': nodes.BMABSquare,
 
     # Sampler
     'BMAB Integrator': nodes.BMABIntegrator,
+    'BMAB Flux Integrator': nodes.BMABFluxIntegrator,
     'BMAB Extractor': nodes.BMABExtractor,
     'BMAB SeedGenerator': nodes.BMABSeedGenerator,
     'BMAB KSampler': nodes.BMABKSampler,
@@ -58,6 +54,7 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Masks To Images': nodes.BMABMasksToImages,
     'BMAB Load Image': nodes.BMABLoadImage,
     'BMAB Load Output Image': nodes.BMABLoadOutputImage,
+    'BMAB Black And White': nodes.BMABBlackAndWhite,
 
     # SD-WebUI API
     'BMAB SD-WebUI API Server': nodes.BMABApiServer,
@@ -75,18 +72,16 @@ NODE_CLASS_MAPPINGS = {
     # Watermark
     'BMAB Watermark': nodes.BMABWatermark,
 
+    'BMAB Upscaler': nodes.BMABUpscale,
+    'BMAB Save Image': nodes.BMABSaveImage,
+    'BMAB Remote Access And Save': nodes.BMABRemoteAccessAndSave,
+    'BMAB Upscale With Model': nodes.BMABUpscaleWithModel,
+    'BMAB LoRA Loader': nodes.BMABLoraLoader,
+    'BMAB Prompt': nodes.BMABPrompt,
+    'BMAB Google Gemini Prompt': nodes.BMABGoogleGemini,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'BMAB DinoSam': 'BMAB DinoSam',
-    'BMAB Upscaler': 'BMAB Upscaler',
-    'BMAB Control Net': 'BMAB ControlNet',
-    'BMAB Save Image': 'BMAB Save Image',
-    'BMAB Upscale With Model': 'BMAB Upscale With Model',
-    'BMAB LoRA Loader': 'BMAB Lora Loader',
-    'BMAB Prompt': 'BMAB Prompt',
-    'BMAB Google Gemini Prompt': 'BMAB Google Gemini API',
-
     # Preview
     'BMAB Basic': 'BMAB Basic',
     'BMAB Edge': 'BMAB Edge',
@@ -98,9 +93,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Resize By Ratio': 'BMAB Resize By Ratio',
     'BMAB Resize and Fill': 'BMAB Resize And Fill',
     'BMAB Crop': 'BMAB Crop',
+    'BMAB Zoom Out': 'BMAB Zoom Out',
+    'BMAB Square': 'BMAB Square',
 
     # Sampler
     'BMAB Integrator': 'BMAB Integrator',
+    'BMAB Flux Integrator': 'BMAB Flux Integrator',
     'BMAB KSampler': 'BMAB KSampler',
     'BMAB KSamplerHiresFix': 'BMAB KSampler Hires. Fix',
     'BMAB KSamplerHiresFixWithUpscaler': 'BMAB KSampler Hires. Fix With Upscaler',
@@ -136,6 +134,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Masks To Images': 'BMAB Masks To Images',
     'BMAB Load Image': 'BMAB Load Image',
     'BMAB Load Output Image': 'BMAB Load Output Image',
+    'BMAB Black And White': 'BMAB Black And White',
 
     # SD-WebUI API
     'BMAB SD-WebUI API Server': 'BMAB SD-WebUI API Server',
@@ -152,5 +151,15 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
     # Watermark
     'BMAB Watermark': 'BMAB Watermark',
+
+    'BMAB DinoSam': 'BMAB DinoSam',
+    'BMAB Upscaler': 'BMAB Upscaler',
+    'BMAB Control Net': 'BMAB ControlNet',
+    'BMAB Save Image': 'BMAB Save Image',
+    'BMAB Remote Access And Save': 'BMAB Remote Access And Save',
+    'BMAB Upscale With Model': 'BMAB Upscale With Model',
+    'BMAB LoRA Loader': 'BMAB Lora Loader',
+    'BMAB Prompt': 'BMAB Prompt',
+    'BMAB Google Gemini Prompt': 'BMAB Google Gemini API',
 }
 

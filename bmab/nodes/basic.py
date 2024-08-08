@@ -134,7 +134,7 @@ class BMABSaveImage:
 			'required': {
 				'filename_prefix': ('STRING', {'default': 'bmab'}),
 				'format': (['png', 'jpg'], ),
-				'use_date': (['disable', 'enable'], )
+				'use_date': (['disable', 'enable'], ),
 			},
 			'hidden': {
 				'prompt': 'PROMPT', 'extra_pnginfo': 'EXTRA_PNGINFO'
@@ -280,4 +280,36 @@ class BMABPreviewText:
 
 	def preview_text(self, text, prompt=None, extra_pnginfo=None):
 		return {"ui": {"string": [text, ]}, "result": (text,)}
+
+
+class BMABRemoteAccessAndSave(BMABSaveImage):
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'filename_prefix': ('STRING', {'default': 'bmab'}),
+				'format': (['png', 'jpg'], ),
+				'use_date': (['disable', 'enable'], ),
+				'remote_name': ('STRING', {'multiline': False}),
+			},
+			'hidden': {
+				'prompt': 'PROMPT', 'extra_pnginfo': 'EXTRA_PNGINFO'
+			},
+			'optional': {
+				'bind': ('BMAB bind',),
+				'images': ('IMAGE',),
+			}
+		}
+
+	RETURN_TYPES = ()
+	FUNCTION = 'remote_save_images'
+
+	OUTPUT_NODE = True
+
+	CATEGORY = 'BMAB/basic'
+
+	def remote_save_images(self, filename_prefix='bmab', format='png', use_date='disable', remote_name=None, prompt=None, extra_pnginfo=None, bind: BMABBind = None, images=None):
+		return self.save_images(filename_prefix, format, use_date, prompt, extra_pnginfo, bind, images)
+
 

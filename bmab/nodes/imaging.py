@@ -74,6 +74,7 @@ class BMABRemoveBackground:
 		return {
 			'required': {
 				'image': ('IMAGE',),
+				'channel': (['RGBA', 'RGB'],),
 			}
 		}
 
@@ -83,7 +84,7 @@ class BMABRemoveBackground:
 
 	CATEGORY = 'BMAB/imaging'
 
-	def process(self, image):
+	def process(self, image, channel):
 
 		net = BriaRMBG()
 		device = utils.get_device()
@@ -112,10 +113,15 @@ class BMABRemoveBackground:
 			del img
 			utils.torch_gc()
 
-			blank = Image.new('RGBA', image.size, 0)
-			blank.paste(image.convert('RGBA'), (0, 0), mask=pil_im)
+			if channel == 'RGBA':
+				blank = Image.new('RGBA', image.size, 0)
+				blank.paste(image.convert('RGBA'), (0, 0), mask=pil_im)
+				results.append(blank)
+			elif channel == 'RGB':
+				blank = Image.new('RGB', image.size, 0)
+				blank.paste(image.convert('RGB'), (0, 0), mask=pil_im)
+				results.append(blank)
 
-			results.append(blank)
 			masks.append(result_image)
 
 		pixels = utils.get_pixels_from_pils(results)
@@ -495,3 +501,31 @@ class BMABEdge:
 		pixels = utils.pil2tensor(results)
 		return (pixels,)
 
+
+class BMABBlackAndWhite:
+
+	@classmethod
+	def INPUT_TYPES(s):
+
+		return {
+			'required': {
+				'image': ('IMAGE',),
+			}
+		}
+
+	RETURN_TYPES = ('IMAGE',)
+	RETURN_NAMES = ('image',)
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/imaging'
+
+	def process(self, image):
+		results = []
+		for pil_img in utils.get_pils_from_pixels(image):
+			l_mode = pil_img.convert('L')
+			thresh = 200
+			fn = lambda x: 255 if x > thresh else 0
+			pil = l_mode.point(fn, mode='1').convert('RGB')
+			results.append(pil)
+		pixels = utils.get_pixels_from_pils(results)
+		return (pixels,)
