@@ -234,6 +234,7 @@ class BMABDetectAndPaste:
 				'source': ('IMAGE',),
 				'model': (utils.list_pretraining_models(),),
 				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 128, 'step': 1}),
+				'threshold': ('FLOAT', {'default': 0.35, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
 			}
 		}
 
@@ -243,11 +244,11 @@ class BMABDetectAndPaste:
 
 	CATEGORY = 'BMAB/imaging'
 
-	def process(self, image, source, model, dilation):
+	def process(self, image, source, model, dilation, threshold):
 		results = []
 		src = utils.get_pils_from_pixels(source)
 		for pil_img in utils.get_pils_from_pixels(image):
-			boxes, confs = yolo.predict(src[0], model, 0.35)
+			boxes, confs = yolo.predict(src[0], model, threshold)
 			for box, conf in zip(boxes, confs):
 				x1, y1, x2, y2 = tuple(int(x) for x in box)
 				pil_img.paste(src[0], (0, 0), mask=utils.get_blur_mask(pil_img.size, (x1, y1, x2, y2), dilation))
