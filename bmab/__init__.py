@@ -39,6 +39,7 @@ NODE_CLASS_MAPPINGS = {
 
     # Control Net
     'BMAB ControlNet': nodes.BMABControlNet,
+    'BMAB Flux ControlNet': nodes.BMABFluxControlNet,
     'BMAB ControlNet Openpose': nodes.BMABControlNetOpenpose,
     'BMAB ControlNet IPAdapter': nodes.BMABControlNetIPAdapter,
 
@@ -55,6 +56,7 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Load Image': nodes.BMABLoadImage,
     'BMAB Load Output Image': nodes.BMABLoadOutputImage,
     'BMAB Black And White': nodes.BMABBlackAndWhite,
+    'BMAB Detect And Paste': nodes.BMABDetectAndPaste,
 
     # SD-WebUI API
     'BMAB SD-WebUI API Server': nodes.BMABApiServer,
@@ -119,6 +121,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
     # Control Net
     'BMAB ControlNet': 'BMAB ControlNet',
+    'BMAB Flux ControlNet': 'BMAB Flux ControlNet',
     'BMAB ControlNet Openpose': 'BMAB ControlNet Openpose',
     'BMAB ControlNet IPAdapter': 'BMAB ControlNet IPAdapter',
 
@@ -135,6 +138,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Load Image': 'BMAB Load Image',
     'BMAB Load Output Image': 'BMAB Load Output Image',
     'BMAB Black And White': 'BMAB Black And White',
+    'BMAB Detect And Paste': 'BMAB Detect And Paste',
 
     # SD-WebUI API
     'BMAB SD-WebUI API Server': 'BMAB SD-WebUI API Server',

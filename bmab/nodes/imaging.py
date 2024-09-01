@@ -225,6 +225,36 @@ class BMABDetectAndMask:
 		return (results, )
 
 
+class BMABDetectAndPaste:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'image': ('IMAGE',),
+				'source': ('IMAGE',),
+				'model': (utils.list_pretraining_models(),),
+				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 128, 'step': 1}),
+			}
+		}
+
+	RETURN_TYPES = ('IMAGE', )
+	RETURN_NAMES = ('image', )
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/imaging'
+
+	def process(self, image, source, model, dilation):
+		results = []
+		src = utils.get_pils_from_pixels(source)
+		for pil_img in utils.get_pils_from_pixels(image):
+			boxes, confs = yolo.predict(src[0], model, 0.35)
+			for box, conf in zip(boxes, confs):
+				x1, y1, x2, y2 = tuple(int(x) for x in box)
+				pil_img.paste(src[0], (0, 0), mask=utils.get_blur_mask(pil_img.size, (x1, y1, x2, y2), dilation))
+			results.append(pil_img)
+		return (utils.get_pixels_from_pils(results), )
+
+
 class BMABLamaInpaint:
 	@classmethod
 	def INPUT_TYPES(s):
@@ -452,6 +482,7 @@ class BMABLoadOutputImage:
 			return "Invalid image file: {}".format(image)
 
 		return True
+
 
 class BMABEdge:
 	@classmethod

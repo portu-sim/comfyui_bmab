@@ -66,6 +66,7 @@ class BMABFaceDetailer(BMABDetailer):
 				'model': (s.models, ),
 				'limit': ('INT', {'default': 1, 'min': 0, 'max': 5, 'step': 1}),
 				'order': (['Size', 'Left', 'Right', 'Center', 'Score'], ),
+				'sam_masking': (['off', 'on'],),
 			},
 			'optional': {
 				'image': ('IMAGE',),
@@ -86,7 +87,7 @@ class BMABFaceDetailer(BMABDetailer):
 		latent = bind.vae.decode(samples["samples"])
 		return utils.tensor2pil(latent)
 
-	def process_faces(self, bind, bgimg, img2img, model, limit, order):
+	def process_faces(self, bind, bgimg, img2img, model, limit, order, withsam=True):
 		boxes, logits = utils.yolo.predict(bgimg, model, 0.35)
 		candidate = []
 		if order == 'Left':
@@ -131,10 +132,18 @@ class BMABFaceDetailer(BMABDetailer):
 		for index, (value, box, logit) in enumerate(candidate):
 			if limit != 0 and index >= limit:
 				return bgimg
-			bgimg = process.process_img2img_with_mask(bind, bgimg, img2img, box=box)
+			if withsam:
+				processed = process.process_img2img_with_mask(bind, bgimg.copy(), img2img, box=box)
+				sam_mask = sam.sam_predict_box(processed, box).convert('L')
+				sam_mask = utils.dilate_mask(sam_mask, img2img['dilation'])
+				blur = ImageFilter.GaussianBlur(4)
+				blur_mask = sam_mask.filter(blur)
+				bgimg.paste(processed, (0, 0), mask=blur_mask)
+			else:
+				bgimg = process.process_img2img_with_mask(bind, bgimg, img2img, box=box)
 		return bgimg
 
-	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, model, limit, order, image=None, lora=None):
+	def process(self, bind: BMABBind, steps, cfg_scale, sampler_name, scheduler, denoise, padding, dilation, width, height, model, limit, order, sam_masking, image=None, lora=None):
 		pixels = bind.pixels if image is None else image
 
 		if bind.context is not None:
@@ -143,6 +152,8 @@ class BMABFaceDetailer(BMABDetailer):
 		if lora is not None:
 			for l in lora.loras:
 				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
+
+		withsam = sam_masking == 'on'
 
 		results = []
 		for bgimg in utils.get_pils_from_pixels(pixels):
@@ -157,7 +168,7 @@ class BMABFaceDetailer(BMABDetailer):
 				'width': width,
 				'height': height,
 			}
-			results.append(self.process_faces(bind, bgimg, img2img, model, limit, order))
+			results.append(self.process_faces(bind, bgimg, img2img, model, limit, order, withsam))
 
 		bind.pixels = utils.get_pixels_from_pils(results)
 		return (bind, bind.pixels)
@@ -217,7 +228,15 @@ class BMABPersonDetailer(BMABDetailer):
 				bind.pixels = pixels
 				return (bind, bind.pixels,)
 
-			for idx, (box, conf) in enumerate(zip(boxes, confs)):
+			candidate = []
+			for box, conf in zip(boxes, confs):
+				x1, y1, x2, y2 = box
+				value = (x2 - x1) * (y2 - y1)
+				print('detected(size)', float(conf), value)
+				candidate.append((value, box, conf))
+			candidate = sorted(candidate, key=lambda c: c[0], reverse=True)
+
+			for idx, (value, box, conf) in enumerate(candidate):
 				x1, y1, x2, y2 = tuple(int(x) for x in box)
 
 				if limit != 0 and idx >= limit:
