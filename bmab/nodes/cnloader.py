@@ -473,7 +473,7 @@ class BMABFluxControlNet:
 				if prev_cnet in cnets:
 					c_net = cnets[prev_cnet]
 				else:
-					c_net = control_net.copy().set_cond_hint(control_hint, strength, (start_percent, end_percent))
+					c_net = control_net.copy().set_cond_hint(control_hint, strength, (start_percent, end_percent), bind.vae)
 					c_net.set_previous_controlnet(prev_cnet)
 					cnets[prev_cnet] = c_net
 
