@@ -18,6 +18,7 @@ NODE_CLASS_MAPPINGS = {
 
     # Sampler
     'BMAB Integrator': nodes.BMABIntegrator,
+    'BMAB ToBind': nodes.BMABToBind,
     'BMAB Flux Integrator': nodes.BMABFluxIntegrator,
     'BMAB Extractor': nodes.BMABExtractor,
     'BMAB SeedGenerator': nodes.BMABSeedGenerator,
@@ -100,6 +101,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
     # Sampler
     'BMAB Integrator': 'BMAB Integrator',
+    'BMAB ToBind': 'BMAB ToBind',
     'BMAB Flux Integrator': 'BMAB Flux Integrator',
     'BMAB KSampler': 'BMAB KSampler',
     'BMAB KSamplerHiresFix': 'BMAB KSampler Hires. Fix',

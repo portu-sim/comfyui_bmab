@@ -629,3 +629,46 @@ class BMABClipTextEncoderSDXL(nodes_clip_sdxl.CLIPTextEncodeSDXL):
 			text_g = utils.parse_prompt(text_g, seed)
 			text_l = utils.parse_prompt(text_l, seed)
 		return super().encode(clip, width, height, crop_w, crop_h, target_width, target_height, text_g, text_l)
+
+
+class BMABToBind:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'context': ('CONTEXT',),
+			},
+			'optional': {
+				'bind': ('BMAB bind',),
+				'model': ('MODEL',),
+				'clip': ('CLIP',),
+				'vae': ('VAE',),
+				'positive': ('CONDITIONING',),
+				'negative': ('CONDITIONING',),
+				'latent': ('LATENT',),
+			}
+		}
+
+	RETURN_TYPES = ('BMAB bind', )
+	RETURN_NAMES = ('BMAB bind', )
+	FUNCTION = 'integrate_inputs'
+
+	CATEGORY = 'BMAB/sampler'
+
+	def integrate_inputs(self, context: BMABContext, model=None, clip=None, vae=None, positive=None, negative=None, bind=None, latent=None):
+		if bind is not None:
+			if model is not None:
+				bind.model = model
+			if clip is not None:
+				bind.clip = clip
+			if vae is not None:
+				bind.vae = vae
+			if positive is not None:
+				bind.positive = positive
+			if negative is not None:
+				bind.negative = negative
+			if latent is not None:
+				bind.latent = latent
+			return bind
+		else:
+			return BMABBind(model, clip, vae, '', '', positive, negative, latent, context, None, context.seed),
