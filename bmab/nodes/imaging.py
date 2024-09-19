@@ -235,6 +235,7 @@ class BMABDetectAndPaste:
 				'model': (utils.list_pretraining_models(),),
 				'dilation': ('INT', {'default': 4, 'min': 4, 'max': 128, 'step': 1}),
 				'threshold': ('FLOAT', {'default': 0.35, 'min': 0.0, 'max': 1.0, 'step': 0.01}),
+				'sam_masking': (['off', 'on'],),
 			}
 		}
 
@@ -244,14 +245,27 @@ class BMABDetectAndPaste:
 
 	CATEGORY = 'BMAB/imaging'
 
-	def process(self, image, source, model, dilation, threshold):
+	def process(self, image, source, model, dilation, threshold, sam_masking):
 		results = []
+		withsam = sam_masking == 'on'
+
 		src = utils.get_pils_from_pixels(source)
 		for pil_img in utils.get_pils_from_pixels(image):
 			boxes, confs = yolo.predict(src[0], model, threshold)
 			for box, conf in zip(boxes, confs):
 				x1, y1, x2, y2 = tuple(int(x) for x in box)
-				pil_img.paste(src[0], (0, 0), mask=utils.get_blur_mask(pil_img.size, (x1, y1, x2, y2), dilation))
+				if src[0].width != pil_img.width or src[0].height != pil_img.height:
+					src0 = src[0].resize(pil_img.size, Image.Resampling.LANCZOS)
+				else:
+					src0 = src[0]
+				if withsam:
+					sam_mask = sam.sam_predict_box(src0, box).convert('L')
+					sam_mask = utils.dilate_mask(sam_mask, dilation)
+					blur = ImageFilter.GaussianBlur(4)
+					blur_mask = sam_mask.filter(blur)
+					pil_img.paste(src0, (0, 0), mask=blur_mask)
+				else:
+					pil_img.paste(src0, (0, 0), mask=utils.get_blur_mask(pil_img.size, (x1, y1, x2, y2), dilation))
 			results.append(pil_img)
 		return (utils.get_pixels_from_pils(results), )
 
