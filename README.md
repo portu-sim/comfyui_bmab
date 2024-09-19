@@ -23,7 +23,7 @@ https://github.com/portu-sim/comfyui_bmab/blob/main/resources/examples/bmab-flux
 ### Gallery
 
 [instagram](https://www.instagram.com/portu.sim/)   
-[facebook](https://www.facebook.com/portu.sim)
+[facebook](https://www.facebook.com/portusimkr)
 
 ### Hand Detailing Sample
 
