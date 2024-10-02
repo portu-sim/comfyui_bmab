@@ -437,6 +437,15 @@ def dilate_mask(mask, dilation):
 	return Image.fromarray(arr)
 
 
+def erosion_mask(mask, erosion):
+	if erosion < 4:
+		return mask
+	arr = np.array(mask)
+	kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (erosion, erosion))
+	arr = cv2.erode(arr, kernel, iterations=1)
+	return Image.fromarray(arr)
+
+
 def is_box_in_box(box1, box2):
 	x1, y1, x2, y2 = box1
 	cx, cy = x1 + ((x2 - x1) // 2), y1 + ((y2 - y1) // 2)

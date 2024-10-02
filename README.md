@@ -19,6 +19,21 @@ https://github.com/portu-sim/comfyui_bmab/blob/main/resources/examples/bmab-flux
 
 <img src="https://github.com/user-attachments/assets/dfa36eb1-6978-47e7-a0d0-67c82639cf52"/>
 
+# New Nodes
+
+## BMAB Inpaint
+
+<img width="1393" alt="image" src="https://github.com/user-attachments/assets/8bf15832-7be4-41f2-b8ac-64056d5ac4d9">
+
+## BMAB Reframe
+
+<img width="1317" alt="image" src="https://github.com/user-attachments/assets/ba971f72-abfa-4998-a6cb-fcbaa245fcb5">
+
+## BMAB Outpaint By Ratio
+
+<img width="1186" alt="image" src="https://github.com/user-attachments/assets/88255a25-6e56-427c-9683-6ea1f591e4dd">
+
+
 
 ### Gallery
 

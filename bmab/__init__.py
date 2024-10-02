@@ -82,6 +82,11 @@ NODE_CLASS_MAPPINGS = {
     'BMAB LoRA Loader': nodes.BMABLoraLoader,
     'BMAB Prompt': nodes.BMABPrompt,
     'BMAB Google Gemini Prompt': nodes.BMABGoogleGemini,
+
+    # Fill
+    'BMAB Reframe': nodes.BMABReframe,
+    'BMAB Outpaint By Ratio': nodes.BMABOutpaintByRatio,
+    'BMAB Inpaint': nodes.BMABInpaint
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -167,5 +172,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB LoRA Loader': 'BMAB Lora Loader',
     'BMAB Prompt': 'BMAB Prompt',
     'BMAB Google Gemini Prompt': 'BMAB Google Gemini API',
+
+    # Fill
+    'BMAB Reframe': 'BMAB Reframe',
+    'BMAB Outpaint By Ratio': 'BMAB Outpaint By Ratio',
+    'BMAB Inpaint': 'BMAB Inpaint',
 }
 

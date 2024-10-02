@@ -17,3 +17,4 @@ from .a1111api import BMABApiServer, BMABApiSDWebUIT2I, BMABApiSDWebUIT2IHiresFi
 from .a1111api import BMABApiSDWebUIBMABExtension, BMABApiSDWebUII2I
 from .utilnode import BMABModelToBind, BMABConditioningToBind, BMABNoiseGenerator
 from .watermark import BMABWatermark
+from .fill import BMABInpaint, BMABOutpaintByRatio, BMABReframe
