@@ -1,5 +1,4 @@
 import math
-import spaces
 import torch
 from diffusers import AutoencoderKL, TCDScheduler
 from diffusers.models.model_loading_utils import load_state_dict
@@ -82,7 +81,6 @@ class BMABReframe:
 		'16:9': (1456, 816)
 	}
 
-	@spaces.GPU(duration=24)
 	def infer(self, image, width, height, overlap_width, num_inference_steps, prompt_input):
 		source = image
 		image_ratio = source.width / source.height
@@ -201,7 +199,6 @@ class BMABOutpaintByRatio:
 		mask_draw.rectangle(box, fill=0)
 		return mask
 
-	@spaces.GPU(duration=24)
 	def infer(self, image, al, ratio, dilation, num_inference_steps, prompt_input):
 		if al not in utils.alignment:
 			return image
@@ -273,7 +270,6 @@ class BMABInpaint:
 
 	CATEGORY = 'BMAB/fill'
 
-	@spaces.GPU(duration=24)
 	def infer(self, image, mask, steps, prompt_input):
 
 		source = image

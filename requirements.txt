@@ -10,5 +10,4 @@ opencv-python
 urllib3
 pillow
 pillow_avif_plugin
-spaces
 
