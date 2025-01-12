@@ -9,8 +9,9 @@ try:
 	import testnodes
 	print('Register test nodes.')
 	testnodes.register(NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS)
-except:
+except Exception as e:
 	print('Not found test nodes.')
+	print(e)
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 

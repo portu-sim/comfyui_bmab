@@ -84,7 +84,7 @@ class BMABUpscaleWithModel:
 		out = model_loading.load_state_dict(sd).eval()
 		return out
 
-	def upscale_with_model(self, model_name, pixels):
+	def upscale_with_model(self, model_name, pixels, progress=True):
 		upscale_model = self.load_model(model_name)
 		device = model_management.get_torch_device()
 
@@ -102,9 +102,12 @@ class BMABUpscaleWithModel:
 		oom = True
 		while oom:
 			try:
-				steps = in_img.shape[0] * comfy.utils.get_tiled_scale_steps(in_img.shape[3], in_img.shape[2], tile_x=tile, tile_y=tile, overlap=overlap)
-				pbar = comfy.utils.ProgressBar(steps)
-				s = comfy.utils.tiled_scale(in_img, lambda a: upscale_model(a), tile_x=tile, tile_y=tile, overlap=overlap, upscale_amount=upscale_model.scale, pbar=pbar)
+				if progress:
+					steps = in_img.shape[0] * comfy.utils.get_tiled_scale_steps(in_img.shape[3], in_img.shape[2], tile_x=tile, tile_y=tile, overlap=overlap)
+					pbar = comfy.utils.ProgressBar(steps)
+					s = comfy.utils.tiled_scale(in_img, lambda a: upscale_model(a), tile_x=tile, tile_y=tile, overlap=overlap, upscale_amount=upscale_model.scale, pbar=pbar)
+				else:
+					s = comfy.utils.tiled_scale(in_img, lambda a: upscale_model(a), tile_x=tile, tile_y=tile, overlap=overlap, upscale_amount=upscale_model.scale)
 				oom = False
 			except model_management.OOM_EXCEPTION as e:
 				tile //= 2

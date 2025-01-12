@@ -2,11 +2,14 @@ import os
 import cv2
 import numpy as np
 
+import base64
+from io import BytesIO
 from PIL import Image
 
 import bmab
 from bmab import utils
 from bmab.nodes.binder import BMABBind
+from bmab import serverext
 
 
 class BMABModelToBind:
@@ -121,3 +124,56 @@ class BMABNoiseGenerator:
 		noise.save(full_path)
 		return (utils.get_pixels_from_pils([noise]),)
 
+
+class BMABBase64Image:
+
+	def __init__(self) -> None:
+		super().__init__()
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'encoding': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+			},
+		}
+
+	RETURN_TYPES = ('IMAGE', 'INT', 'INT')
+	RETURN_NAMES = ('image', 'width', 'height')
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/utils'
+
+	def process(self, encoding):
+		results = []
+		pil = Image.open(BytesIO(base64.b64decode(encoding)))
+		results.append(pil)
+		return utils.get_pixels_from_pils(results), pil.width, pil.height
+
+
+class BMABImageStorage:
+
+	def __init__(self) -> None:
+		super().__init__()
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'images': ('IMAGE',),
+				'client_id': ('STRING', {'multiline': False}),
+			},
+		}
+
+	RETURN_TYPES = ()
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/utils'
+	OUTPUT_NODE = True
+
+	def process(self, images, client_id):
+		results = []
+		for image in utils.get_pils_from_pixels(images):
+			results.append(image)
+		serverext.memory_image_storage[client_id] = results
+		return {'ui': {'images': []}}

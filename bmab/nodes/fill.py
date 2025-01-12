@@ -7,7 +7,7 @@ from huggingface_hub import hf_hub_download
 from bmab.external.fill.controlnet_union import ControlNetModel_Union
 from bmab.external.fill.pipeline_fill_sd_xl import StableDiffusionXLFillPipeline
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from bmab import utils
 
@@ -48,6 +48,13 @@ def load():
 	).to("cuda")
 
 	pipe.scheduler = TCDScheduler.from_config(pipe.scheduler.config)
+
+
+def unload():
+	global pipe
+	if pipe is not None:
+		pipe = None
+		utils.torch_gc()
 
 
 class BMABReframe:
@@ -230,10 +237,7 @@ class BMABOutpaintByRatio:
 			num_inference_steps=num_inference_steps
 		)
 
-		image = image.convert("RGBA")
-		cnet_image.paste(image, (0, 0), mask)
-
-		return cnet_image
+		return image
 
 	def process(self, image, steps, alignment, ratio, dilation, iteration, prompt):
 
@@ -298,13 +302,7 @@ class BMABInpaint:
 			image=cnet_image,
 			num_inference_steps=steps
 		)
-
-		image = image.convert("RGBA")
-		if image.size != mask.size:
-			image = image.resize(mask.size, Image.Resampling.LANCZOS)
-		cnet_image.paste(image, (0, 0), mask)
-
-		return cnet_image
+		return image
 
 	def mask_to_image(self, mask):
 		result = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)

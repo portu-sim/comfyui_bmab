@@ -244,7 +244,10 @@ class BMABText:
 	def INPUT_TYPES(s):
 		return {
 			'required': {
-				'text': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+			},
+			'optional': {
+				'text': ('STRING', {"forceInput": True}),
 			}
 		}
 
@@ -254,9 +257,11 @@ class BMABText:
 
 	CATEGORY = 'BMAB/basic'
 
-	def export(self, text):
-		text = utils.parse_color(text)
-		return (text,)
+	def export(self, prompt, text=None):
+		if text is not None:
+			prompt = prompt.replace('__prompt__', text)
+		result = utils.parse_prompt(prompt, 0)
+		return (result,)
 
 
 class BMABPreviewText:

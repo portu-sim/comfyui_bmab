@@ -71,6 +71,8 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Model To Bind': nodes.BMABModelToBind,
     'BMAB Conditioning To Bind': nodes.BMABConditioningToBind,
     'BMAB Noise Generator': nodes.BMABNoiseGenerator,
+    'BMAB Base64 Image': nodes.BMABBase64Image,
+    'BMAB Image Storage': nodes.BMABImageStorage,
 
     # Watermark
     'BMAB Watermark': nodes.BMABWatermark,
@@ -159,6 +161,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Model To Bind': 'BMAB Model To Bind',
     'BMAB Conditioning To Bind': 'BMAB Conditioning To Bind',
     'BMAB Noise Generator': 'BMAB Noise Generator',
+    'BMAB Base64 Image': 'BMAB Base64 Image',
+    'BMAB Image Storage': 'BMAB Image Storage',
 
     # Watermark
     'BMAB Watermark': 'BMAB Watermark',
