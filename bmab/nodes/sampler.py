@@ -440,7 +440,7 @@ class BMABKSamplerHiresFixWithUpscaler:
 				results = [img.resize((width, height), Image.Resampling.LANCZOS) for img in pil_images]
 				pixels = utils.get_pixels_from_pils(results)
 			else:
-				if scale > 1:
+				if scale > 1 or scale == 0:
 					s = self.upscale_with_model(model_name, pixels)
 				pil_images = utils.get_pils_from_pixels(s)
 				results = [img.resize((width, height), Image.Resampling.LANCZOS) for img in pil_images]

@@ -253,7 +253,6 @@ class BMABOutpaintByRatio:
 		return (pixels,)
 
 
-
 class BMABInpaint:
 
 	@classmethod
@@ -266,6 +265,9 @@ class BMABInpaint:
 				'iteration': ('INT', {'default': 4, 'min': 1, 'max': 8, 'step': 1}),
 				'prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
 			},
+			'optional': {
+				'seed': ('SEED',)
+			}
 		}
 
 	RETURN_TYPES = ('IMAGE', )
@@ -308,7 +310,7 @@ class BMABInpaint:
 		result = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
 		return utils.get_pils_from_pixels(result)[0].convert('L')
 
-	def process(self, image, mask, steps, iteration, prompt):
+	def process(self, image, mask, steps, iteration, prompt, seed=None):
 
 		results = []
 		mask = self.mask_to_image(mask)

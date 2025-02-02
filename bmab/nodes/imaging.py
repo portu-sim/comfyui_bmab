@@ -417,7 +417,13 @@ class BMABLoadImage(nodes.LoadImage):
 
 	CATEGORY = 'BMAB/imaging'
 
-	RETURN_TYPES = ('IMAGE', 'MASK')
+	RETURN_TYPES = ('IMAGE', 'MASK', 'INT', 'INT')
+	RETURN_NAMES = ('image', 'mask', 'width', 'height')
+
+	def load_image(self, image):
+		img, mask = super().load_image(image)
+		_, h, w, c = img.shape
+		return img, mask, w, h
 
 
 class BMABLoadOutputImage:

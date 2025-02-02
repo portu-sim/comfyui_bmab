@@ -18,4 +18,4 @@ from .a1111api import BMABApiSDWebUIBMABExtension, BMABApiSDWebUII2I
 from .utilnode import BMABModelToBind, BMABConditioningToBind, BMABNoiseGenerator
 from .watermark import BMABWatermark
 from .fill import BMABInpaint, BMABOutpaintByRatio, BMABReframe
-from .utilnode import BMABBase64Image, BMABImageStorage
+from .utilnode import BMABBase64Image, BMABImageStorage, BMABNormalizeSize, BMABDummy

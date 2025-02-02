@@ -73,6 +73,8 @@ NODE_CLASS_MAPPINGS = {
     'BMAB Noise Generator': nodes.BMABNoiseGenerator,
     'BMAB Base64 Image': nodes.BMABBase64Image,
     'BMAB Image Storage': nodes.BMABImageStorage,
+    'BMAB Normalize Size': nodes.BMABNormalizeSize,
+    'BMAB Dummy': nodes.BMABDummy,
 
     # Watermark
     'BMAB Watermark': nodes.BMABWatermark,
@@ -163,6 +165,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'BMAB Noise Generator': 'BMAB Noise Generator',
     'BMAB Base64 Image': 'BMAB Base64 Image',
     'BMAB Image Storage': 'BMAB Image Storage',
+    'BMAB Normalize Size': 'BMAB Normalize Size',
+    'BMAB Dummy': 'BMAB Dummy',
 
     # Watermark
     'BMAB Watermark': 'BMAB Watermark',

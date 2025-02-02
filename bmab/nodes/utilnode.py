@@ -52,8 +52,8 @@ class BMABConditioningToBind:
 				'bind': ('BMAB bind',),
 			},
 			'optional': {
-				"positive": ("CONDITIONING",),
-				"negative": ("CONDITIONING",),
+				'positive': ('CONDITIONING',),
+				'negative': ('CONDITIONING',),
 			}
 		}
 
@@ -177,3 +177,62 @@ class BMABImageStorage:
 			results.append(image)
 		serverext.memory_image_storage[client_id] = results
 		return {'ui': {'images': []}}
+
+
+class BMABNormalizeSize:
+
+	def __init__(self) -> None:
+		super().__init__()
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'width': ('INT', {'default': 512, 'min': 256, 'max': 2048, 'step': 8}),
+				'height': ('INT', {'default': 768, 'min': 256, 'max': 2048, 'step': 8}),
+				'normalize': ('INT', {'default': 768, 'min': 256, 'max': 2048, 'step': 8}),
+			},
+		}
+
+	RETURN_TYPES = ('INT', 'INT')
+	RETURN_NAMES = ('width', 'height')
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/utils'
+	OUTPUT_NODE = True
+
+	def process(self, width, height, normalize):
+		print(width, height)
+		if height > width:
+			ratio = normalize / height
+			w, h = int(width * ratio), normalize
+		else:
+			ratio = normalize / width
+			w, h = normalize, int(height * ratio)
+		return w, h
+
+
+class BMABDummy:
+
+	def __init__(self) -> None:
+		super().__init__()
+
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			'required': {
+				'images': ('IMAGE',),
+				'seed': ('INT', {'default': 0, 'min': 0, 'max': 0xffffffffffffffff, 'tooltip': 'The random seed used for creating the noise.'}),
+			},
+		}
+
+	RETURN_TYPES = ('IMAGE', )
+	RETURN_NAMES = ('images', )
+	FUNCTION = 'process'
+
+	CATEGORY = 'BMAB/utils'
+	OUTPUT_NODE = True
+
+	def process(self, images, seed):
+		return (images, )
+
