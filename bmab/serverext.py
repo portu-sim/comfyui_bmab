@@ -169,17 +169,15 @@ async def bmab_inpaint(request):
 async def bmab_sam(request):
 	j = await request.json()
 	b64img = j.get('image')
-	model = j.get('model')
-	confidence = j.get('confidence')
+	box = j.get('box')
+	labels = j.get('labels')
+	coordinates = j.get('coordinates')
 
 	image = b64_decoding(b64img)
-	boxes, conf = yolo.predict(image, model, confidence)
-	for box in boxes:
-		mask = sam.sam_predict_box(image, box)
-		data = {'image': b64_encoding(mask.convert('RGB'))}
-		sam.release()
-		return web.json_response(data)
-	return web.json_response({})
+	mask = sam.sam_predict_box(image, box, labels=labels, coordinates=coordinates)
+	data = {'image': b64_encoding(mask.convert('RGB'))}
+	sam.release()
+	return web.json_response(data)
 
 
 @PromptServer.instance.routes.post("/bmab/detect")

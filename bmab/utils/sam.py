@@ -54,7 +54,7 @@ def sam_predict(pilimg, boxes, model='sam_vit_b_01ec64.pth'):
 	return result
 
 
-def sam_predict_box(pilimg, box, model='sam_vit_b_01ec64.pth'):
+def sam_predict_box(pilimg, box, labels=None, coordinates=None, model='sam_vit_b_01ec64.pth'):
 	sam = sam_init(model)
 
 	mask_predictor = SamPredictor(sam)
@@ -66,10 +66,20 @@ def sam_predict_box(pilimg, box, model='sam_vit_b_01ec64.pth'):
 	x1, y1, x2, y2 = box
 	box = np.array([int(x1), int(y1), int(x2), int(y2)])
 
-	masks, scores, logits = mask_predictor.predict(
-		box=box,
-		multimask_output=False
-	)
+	if labels is None:
+		masks, scores, logits = mask_predictor.predict(
+			box=box,
+			multimask_output=False
+		)
+	else:
+		labs = np.array(labels)
+		points = np.array(coordinates)
+		masks, scores, logits = mask_predictor.predict(
+			box=box,
+			point_labels=labs,
+			point_coords=points,
+			multimask_output=False
+		)
 
 	return Image.fromarray(masks[0])
 

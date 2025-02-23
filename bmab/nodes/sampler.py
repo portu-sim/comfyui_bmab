@@ -297,6 +297,7 @@ class BMABKSampler:
 			for l in lora.loras:
 				bind.model, bind.clip = self.load_lora(bind.model, bind.clip, *l)
 		samples = nodes.common_ksampler(bind.model, bind.seed, steps, cfg_scale, sampler_name, scheduler, bind.positive, bind.negative, bind.latent_image, denoise=denoise)[0]
+		bind.latent_image = samples
 		bind.pixels = bind.vae.decode(samples['samples'])
 		return bind, bind.pixels,
 
