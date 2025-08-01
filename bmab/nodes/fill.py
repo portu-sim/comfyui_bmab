@@ -30,9 +30,16 @@ def load():
 		filename="diffusion_pytorch_model_promax.safetensors",
 	)
 	state_dict = load_state_dict(model_file)
-	model, _, _, _, _ = ControlNetModel_Union._load_pretrained_model(
-		controlnet_model, state_dict, model_file, "xinsir/controlnet-union-sdxl-1.0"
-	)
+	try:
+		model, _, _, _, _ = ControlNetModel_Union._load_pretrained_model(
+			controlnet_model, state_dict, model_file, "xinsir/controlnet-union-sdxl-1.0"
+		)
+	except:
+		# diffuers >= 0.44
+		model, _, _, _, _, _ = ControlNetModel_Union._load_pretrained_model(
+			controlnet_model, state_dict, model_file, "xinsir/controlnet-union-sdxl-1.0", []
+		)
+
 	model.to(device="cuda", dtype=torch.float16)
 
 	vae = AutoencoderKL.from_pretrained(

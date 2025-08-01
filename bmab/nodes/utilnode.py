@@ -6,6 +6,9 @@ import base64
 from io import BytesIO
 from PIL import Image
 
+import nodes
+import folder_paths
+
 import bmab
 from bmab import utils
 from bmab.nodes.binder import BMABBind
@@ -125,16 +128,19 @@ class BMABNoiseGenerator:
 		return (utils.get_pixels_from_pils([noise]),)
 
 
-class BMABBase64Image:
+class BMABBase64Image(nodes.LoadImage):
 
 	def __init__(self) -> None:
 		super().__init__()
 
 	@classmethod
 	def INPUT_TYPES(s):
+		input_dir = folder_paths.get_input_directory()
+		files = utils.get_file_list(input_dir, input_dir)
 		return {
 			'required': {
 				'encoding': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+				'image': (sorted(files), {'image_upload': True})
 			},
 		}
 
@@ -144,11 +150,16 @@ class BMABBase64Image:
 
 	CATEGORY = 'BMAB/utils'
 
-	def process(self, encoding):
+	def process(self, encoding, image):
 		results = []
-		pil = Image.open(BytesIO(base64.b64decode(encoding)))
-		results.append(pil)
-		return utils.get_pixels_from_pils(results), pil.width, pil.height
+		if encoding is None or encoding == '':
+			img, mask = super().load_image(image)
+			_, h, w, c = img.shape
+			return img, w, h
+		else:
+			pil = Image.open(BytesIO(base64.b64decode(encoding)))
+			results.append(pil)
+			return utils.get_pixels_from_pils(results), pil.width, pil.height
 
 
 class BMABImageStorage:
