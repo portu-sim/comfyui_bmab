@@ -12,3 +12,4 @@ pillow
 pillow_avif_plugin
 blendmodes
 diffusers
+pandas
