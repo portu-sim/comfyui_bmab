@@ -147,7 +147,7 @@ class BMABControlNetOpenpose(BMABControlNet):
 		input_dir = folder_paths.get_input_directory()
 		files = utils.get_file_list(input_dir, input_dir)
 		try:
-			from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
+			from custom_nodes.comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
 			return {
 				'required': {
 					'bind': ('BMAB bind',),
@@ -234,7 +234,7 @@ class BMABControlNetIPAdapter(BMABControlNet):
 		files = utils.get_file_list(input_dir, input_dir)
 
 		try:
-			from ComfyUI_IPAdapter_plus import IPAdapterPlus
+			from custom_nodes.ComfyUI_IPAdapter_plus import IPAdapterPlus
 			return {
 				'required': {
 					'bind': ('BMAB bind',),
