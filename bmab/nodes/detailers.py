@@ -515,8 +515,8 @@ class BMABOpenposeHandDetailer(BMABDetailer):
 	@classmethod
 	def INPUT_TYPES(s):
 		try:
-			from comfyui_controlnet_aux.node_wrappers.dwpose import DWPose_Preprocessor
-			from comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
+			from custom_nodes.comfyui_controlnet_aux.node_wrappers.dwpose import DWPose_Preprocessor
+			from custom_nodes.comfyui_controlnet_aux.node_wrappers.openpose import OpenPose_Preprocessor
 
 			return {
 				'required': {
