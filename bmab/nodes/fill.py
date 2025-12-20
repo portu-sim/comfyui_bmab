@@ -10,58 +10,177 @@ from bmab.external.fill.pipeline_fill_sd_xl import StableDiffusionXLFillPipeline
 from PIL import Image, ImageDraw, ImageFilter
 
 from bmab import utils
+import comfy.model_management as mm
 
 
-pipe = None
+class FillPipelineWrapper:
+	"""파이프라인 래퍼 - 자동 언로드 기능 포함"""
+
+	def __init__(self):
+		self.pipe = None
+		self.device = None
+		self.memory_required = 8 * 1024 * 1024 * 1024  # 8GB
+		self.is_currently_used = False
+
+	def load_pipeline(self):
+		"""파이프라인 로드"""
+		if self.pipe is not None:
+			return self.pipe
+
+		print("Loading fill pipeline...")
+
+		config_file = hf_hub_download(
+			"xinsir/controlnet-union-sdxl-1.0",
+			filename="config_promax.json",
+		)
+
+		config = ControlNetModel_Union.load_config(config_file)
+		controlnet_model = ControlNetModel_Union.from_config(config)
+		model_file = hf_hub_download(
+			"xinsir/controlnet-union-sdxl-1.0",
+			filename="diffusion_pytorch_model_promax.safetensors",
+		)
+		state_dict = load_state_dict(model_file)
+		try:
+			model, _, _, _, _ = ControlNetModel_Union._load_pretrained_model(
+				controlnet_model, state_dict, model_file, "xinsir/controlnet-union-sdxl-1.0"
+			)
+		except:
+			# diffuers >= 0.44
+			model, _, _, _, _, _ = ControlNetModel_Union._load_pretrained_model(
+				controlnet_model, state_dict, model_file, "xinsir/controlnet-union-sdxl-1.0", []
+			)
+
+		self.device = mm.get_torch_device()
+		model.to(device=self.device, dtype=torch.float16)
+
+		vae = AutoencoderKL.from_pretrained(
+			"madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16
+		).to(self.device)
+
+		self.pipe = StableDiffusionXLFillPipeline.from_pretrained(
+			"SG161222/RealVisXL_V5.0_Lightning",
+			torch_dtype=torch.float16,
+			vae=vae,
+			controlnet=model,
+			variant="fp16",
+		).to(self.device)
+
+		self.pipe.scheduler = TCDScheduler.from_config(self.pipe.scheduler.config)
+
+		print("Fill pipeline loaded successfully")
+		return self.pipe
+
+	def unload_pipeline(self):
+		"""파이프라인 언로드"""
+		if self.pipe is None:
+			return
+
+		# 사용 중이면 언로드하지 않음
+		if self.is_currently_used:
+			print("Fill pipeline is in use, skipping unload")
+			return
+
+		print("Unloading fill pipeline...")
+
+		# 모든 서브모델을 CPU로 이동
+		if hasattr(self.pipe, 'unet') and self.pipe.unet is not None:
+			self.pipe.unet.to('cpu')
+		if hasattr(self.pipe, 'vae') and self.pipe.vae is not None:
+			self.pipe.vae.to('cpu')
+		if hasattr(self.pipe, 'text_encoder') and self.pipe.text_encoder is not None:
+			self.pipe.text_encoder.to('cpu')
+		if hasattr(self.pipe, 'text_encoder_2') and self.pipe.text_encoder_2 is not None:
+			self.pipe.text_encoder_2.to('cpu')
+		if hasattr(self.pipe, 'controlnet') and self.pipe.controlnet is not None:
+			self.pipe.controlnet.to('cpu')
+
+		self.pipe = None
+
+		# 메모리 정리
+		mm.soft_empty_cache()
+		utils.torch_gc()
+
+		print("Fill pipeline unloaded")
+
+	def is_loaded(self):
+		"""파이프라인이 로드되어 있는지"""
+		return self.pipe is not None
+
+
+# 전역 파이프라인 관리자
+class PipelineManager:
+	_instance = None
+	_wrapper = None
+	_original_load_models_gpu = None
+	_hook_installed = False
+
+	@classmethod
+	def get_instance(cls):
+		if cls._instance is None:
+			cls._instance = cls()
+		return cls._instance
+
+	def __init__(self):
+		self._wrapper = FillPipelineWrapper()
+		self._install_hook()
+
+	def _install_hook(self):
+		"""ComfyUI의 load_models_gpu 함수에 후킹"""
+		if PipelineManager._hook_installed:
+			return
+
+		# 원본 함수 저장
+		PipelineManager._original_load_models_gpu = mm.load_models_gpu
+
+		# 래퍼 함수 정의
+		def hooked_load_models_gpu(*args, **kwargs):
+			# Fill 파이프라인이 로드되어 있고 사용 중이 아니면 언로드
+			if pipe_manager._wrapper.is_loaded() and not pipe_manager._wrapper.is_currently_used:
+				print("ComfyUI loading other models, unloading fill pipeline...")
+				pipe_manager._wrapper.unload_pipeline()
+
+			# 원본 함수 호출
+			return PipelineManager._original_load_models_gpu(*args, **kwargs)
+
+		# 함수 교체
+		mm.load_models_gpu = hooked_load_models_gpu
+		PipelineManager._hook_installed = True
+		print("Fill pipeline auto-unload hook installed")
+
+	def get_pipe(self):
+		"""파이프라인 가져오기"""
+		return self._wrapper.load_pipeline()
+
+	def mark_in_use(self):
+		"""파이프라인 사용 시작"""
+		self._wrapper.is_currently_used = True
+
+	def mark_not_in_use(self):
+		"""파이프라인 사용 종료"""
+		self._wrapper.is_currently_used = False
+
+	def is_loaded(self):
+		"""파이프라인이 로드되어 있는지"""
+		return self._wrapper.is_loaded()
+
+	def cleanup(self):
+		"""수동 정리"""
+		self._wrapper.unload_pipeline()
+
+
+# 하위 호환성을 위한 레거시 함수
+pipe_manager = PipelineManager.get_instance()
 
 
 def load():
-	global pipe
-
-	config_file = hf_hub_download(
-		"xinsir/controlnet-union-sdxl-1.0",
-		filename="config_promax.json",
-	)
-
-	config = ControlNetModel_Union.load_config(config_file)
-	controlnet_model = ControlNetModel_Union.from_config(config)
-	model_file = hf_hub_download(
-		"xinsir/controlnet-union-sdxl-1.0",
-		filename="diffusion_pytorch_model_promax.safetensors",
-	)
-	state_dict = load_state_dict(model_file)
-	try:
-		model, _, _, _, _ = ControlNetModel_Union._load_pretrained_model(
-			controlnet_model, state_dict, model_file, "xinsir/controlnet-union-sdxl-1.0"
-		)
-	except:
-		# diffuers >= 0.44
-		model, _, _, _, _, _ = ControlNetModel_Union._load_pretrained_model(
-			controlnet_model, state_dict, model_file, "xinsir/controlnet-union-sdxl-1.0", []
-		)
-
-	model.to(device="cuda", dtype=torch.float16)
-
-	vae = AutoencoderKL.from_pretrained(
-		"madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16
-	).to("cuda")
-
-	pipe = StableDiffusionXLFillPipeline.from_pretrained(
-		"SG161222/RealVisXL_V5.0_Lightning",
-		torch_dtype=torch.float16,
-		vae=vae,
-		controlnet=model,
-		variant="fp16",
-	).to("cuda")
-
-	pipe.scheduler = TCDScheduler.from_config(pipe.scheduler.config)
+	"""레거시 load 함수"""
+	return pipe_manager.get_pipe()
 
 
 def unload():
-	global pipe
-	if pipe is not None:
-		pipe = None
-		utils.torch_gc()
+	"""레거시 unload 함수"""
+	pipe_manager.cleanup()
 
 
 class BMABReframe:
@@ -124,17 +243,19 @@ class BMABReframe:
 
 		final_prompt = f"{prompt_input} , high quality, 4k"
 
-		if pipe is None:
-			load()
+		# 파이프라인 사용 시작
+		pipe_manager.mark_in_use()
+		try:
+			pipe = pipe_manager.get_pipe()
 
-		(
-			prompt_embeds,
-			negative_prompt_embeds,
-			pooled_prompt_embeds,
-			negative_pooled_prompt_embeds,
-		) = pipe.encode_prompt(final_prompt, "cuda", True)
+			(
+				prompt_embeds,
+				negative_prompt_embeds,
+				pooled_prompt_embeds,
+				negative_pooled_prompt_embeds,
+			) = pipe.encode_prompt(final_prompt, pipe.device, True)
 
-		image = pipe(
+			image = pipe(
 				prompt_embeds=prompt_embeds,
 				negative_prompt_embeds=negative_prompt_embeds,
 				pooled_prompt_embeds=pooled_prompt_embeds,
@@ -143,13 +264,15 @@ class BMABReframe:
 				num_inference_steps=num_inference_steps
 			)
 
-		image = image.convert("RGBA")
-		cnet_image.paste(image, (0, 0), mask)
+			image = image.convert("RGBA")
+			cnet_image.paste(image, (0, 0), mask)
 
-		return cnet_image
+			return cnet_image
+		finally:
+			# 파이프라인 사용 종료
+			pipe_manager.mark_not_in_use()
 
 	def process(self, image, ratio, dilation, step, iteration, prompt, **kwargs):
-
 		r = BMABReframe.ratio_sel.get(ratio, (1024, 1024))
 
 		results = []
@@ -157,8 +280,8 @@ class BMABReframe:
 			for v in range(0, iteration):
 				a = self.infer(image, r[0], r[1], dilation, step, prompt_input=prompt)
 				results.append(a)
-		pixels = utils.get_pixels_from_pils(results)
 
+		pixels = utils.get_pixels_from_pils(results)
 		return (pixels,)
 
 
@@ -182,8 +305,8 @@ class BMABOutpaintByRatio:
 			}
 		}
 
-	RETURN_TYPES = ('IMAGE', )
-	RETURN_NAMES = ('image', )
+	RETURN_TYPES = ('IMAGE',)
+	RETURN_NAMES = ('image',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/fill'
@@ -225,32 +348,35 @@ class BMABOutpaintByRatio:
 
 		final_prompt = f"{prompt_input} , high quality, 4k"
 
-		if pipe is None:
-			load()
+		# 파이프라인 사용 시작
+		pipe_manager.mark_in_use()
+		try:
+			pipe = pipe_manager.get_pipe()
 
-		(
-			prompt_embeds,
-			negative_prompt_embeds,
-			pooled_prompt_embeds,
-			negative_pooled_prompt_embeds,
-		) = pipe.encode_prompt(final_prompt, "cuda", True)
+			(
+				prompt_embeds,
+				negative_prompt_embeds,
+				pooled_prompt_embeds,
+				negative_pooled_prompt_embeds,
+			) = pipe.encode_prompt(final_prompt, pipe.device, True)
 
-		image = pipe(
-			prompt_embeds=prompt_embeds,
-			negative_prompt_embeds=negative_prompt_embeds,
-			pooled_prompt_embeds=pooled_prompt_embeds,
-			negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
-			image=cnet_image,
-			num_inference_steps=num_inference_steps
-		)
+			image = pipe(
+				prompt_embeds=prompt_embeds,
+				negative_prompt_embeds=negative_prompt_embeds,
+				pooled_prompt_embeds=pooled_prompt_embeds,
+				negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
+				image=cnet_image,
+				num_inference_steps=num_inference_steps
+			)
 
-		return image
+			return image
+		finally:
+			# 파이프라인 사용 종료
+			pipe_manager.mark_not_in_use()
 
 	def process(self, image, steps, alignment, ratio, dilation, iteration, prompt):
-
 		results = []
 		for image in utils.get_pils_from_pixels(image):
-
 			print('Process image resize', ratio)
 			for r in range(0, iteration):
 				a = self.infer(image, alignment, ratio, dilation, steps, prompt_input=prompt)
@@ -277,8 +403,8 @@ class BMABInpaint:
 			}
 		}
 
-	RETURN_TYPES = ('IMAGE', )
-	RETURN_NAMES = ('image', )
+	RETURN_TYPES = ('IMAGE',)
+	RETURN_NAMES = ('image',)
 	FUNCTION = 'process'
 
 	CATEGORY = 'BMAB/fill'
@@ -293,32 +419,36 @@ class BMABInpaint:
 
 		final_prompt = f"{prompt_input} , high quality, 4k"
 
-		if pipe is None:
-			load()
+		# 파이프라인 사용 시작
+		pipe_manager.mark_in_use()
+		try:
+			pipe = pipe_manager.get_pipe()
 
-		(
-			prompt_embeds,
-			negative_prompt_embeds,
-			pooled_prompt_embeds,
-			negative_pooled_prompt_embeds,
-		) = pipe.encode_prompt(final_prompt, "cuda", True)
+			(
+				prompt_embeds,
+				negative_prompt_embeds,
+				pooled_prompt_embeds,
+				negative_pooled_prompt_embeds,
+			) = pipe.encode_prompt(final_prompt, pipe.device, True)
 
-		image = pipe(
-			prompt_embeds=prompt_embeds,
-			negative_prompt_embeds=negative_prompt_embeds,
-			pooled_prompt_embeds=pooled_prompt_embeds,
-			negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
-			image=cnet_image,
-			num_inference_steps=steps
-		)
-		return image
+			image = pipe(
+				prompt_embeds=prompt_embeds,
+				negative_prompt_embeds=negative_prompt_embeds,
+				pooled_prompt_embeds=pooled_prompt_embeds,
+				negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
+				image=cnet_image,
+				num_inference_steps=steps
+			)
+			return image
+		finally:
+			# 파이프라인 사용 종료
+			pipe_manager.mark_not_in_use()
 
 	def mask_to_image(self, mask):
 		result = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
 		return utils.get_pils_from_pixels(result)[0].convert('L')
 
 	def process(self, image, mask, steps, iteration, prompt, seed=None):
-
 		results = []
 		mask = self.mask_to_image(mask)
 		for image in utils.get_pils_from_pixels(image):
@@ -328,4 +458,3 @@ class BMABInpaint:
 
 		pixels = utils.get_pixels_from_pils(results)
 		return (pixels,)
-

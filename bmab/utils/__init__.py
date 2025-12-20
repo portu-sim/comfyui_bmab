@@ -97,10 +97,10 @@ def load_pretraining_model(filename):
 
 
 def torch_gc():
-	gc.collect()
 	if torch.cuda.is_available():
 		torch.cuda.empty_cache()
 		torch.cuda.ipc_collect()
+	gc.collect()
 
 
 def debug_save_image(img, name):
